@@ -12,13 +12,15 @@ pub enum Type {
 pub struct Value {
     pub typ: Type,
     pub name: String,
+    pub mutable: bool,
 }
 
 impl Value {
-    pub fn new(typ: Type, name: String) -> Value {
+    pub fn new(typ: Type, name: String, mutable: bool) -> Value {
         Value {
             typ,
             name,
+            mutable
         }
     }
 }

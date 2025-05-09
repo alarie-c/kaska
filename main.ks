@@ -1,2 +1,1 @@
-let x: int = 20;
-x = y - 5;
+"yellow" = 5;

@@ -1,37 +1,46 @@
-use crate::ast::{ expr::{ Expr, ExprKind }, stmt::Stmt };
+use crate::{ast::{ expr::{ Expr, ExprKind }, stmt::{Stmt, StmtKind} }, errors::{Error, ErrorBuffer, ErrorKind}};
 
 use super::value::{ Scope, Type, Value };
 
-pub struct Resolver {
-    ast: Vec<Stmt>,
+pub struct Resolver<'a> {
+    ast: &'a Vec<Stmt>,
     scopes: Vec<Scope>,
     curr_scope: usize,
 }
 
-impl Resolver {
-    pub fn new(ast: Vec<Stmt>) -> Self {
+impl<'a> Resolver<'a> {
+    pub fn new(ast: &'a Vec<Stmt>) -> Self {
         Resolver { ast, scopes: vec![Scope::empty()], curr_scope: 0 }
     }
 
-    pub fn resolve(&mut self) {}
+    pub fn resolve(&mut self) -> ErrorBuffer {
+        let mut errors: ErrorBuffer = vec![];
+        for stmt in self.ast {
+            match self.resolve_stmt(stmt) {
+                Ok(_) => {},
+                Err(e) => errors.push(e),
+            }
+        }
+        return errors;
+    }
 }
 
-impl Resolver {
+impl<'a> Resolver<'a> {
     fn current(&mut self) -> &mut Scope {
         return self.scopes.get_mut(self.curr_scope).unwrap();
     }
 
-    fn enter(&mut self) {
-        self.scopes.push(Scope::empty());
-        self.curr_scope = self.scopes.len() - 1;
-    }
+    // fn enter(&mut self) {
+    //     self.scopes.push(Scope::empty());
+    //     self.curr_scope = self.scopes.len() - 1;
+    // }
 
-    fn leave(&mut self) {
-        if self.curr_scope > 0 {
-            self.scopes.pop();
-            self.curr_scope = self.scopes.len() - 1;
-        }
-    }
+    // fn leave(&mut self) {
+    //     if self.curr_scope > 0 {
+    //         self.scopes.pop();
+    //         self.curr_scope = self.scopes.len() - 1;
+    //     }
+    // }
 
     fn push(&mut self, value: Value) {
         self.current().add(value);
@@ -48,53 +57,101 @@ impl Resolver {
     }
 }
 
-impl Resolver {
-    fn resolve_expr(&mut self, expr: &Expr) -> Type {
+impl<'a> Resolver<'a> {
+    fn resolve_typename(&mut self, name: &String) -> Type {
+        match name.as_str() {
+            "int" => Type::Integer,
+            "float" => Type::Float,
+            "string" => Type::String,
+            "bool" => Type::Boolean,
+            _ => Type::Nil,
+        }
+    }
+
+    fn resolve_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match &stmt.kind {
+            StmtKind::VariableDecl { mutable, name, value, typ } => {
+                // decide if the current type is matching the strong typ
+                let value_type = self.resolve_expr(&value)?;
+                if let Some(typ) = typ {
+                    let strong_type = match &typ.kind {
+                        ExprKind::Ident { name } => self.resolve_typename(&name),
+                        _ => Type::Nil
+                    };
+                    
+                    // todo: type coercion
+                    if strong_type != value_type {
+                        panic!("Assigned the wrong type broham...");
+                    }
+                }
+
+                // create the value and push
+                self.push(Value::new(value_type, name.to_owned(), *mutable));
+            }
+            StmtKind::Expression { expr } => {
+                let _ = self.resolve_expr(&expr)?;
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+    
+    fn resolve_expr(&mut self, expr: &Expr) -> Result<Type, Error> {
         match &expr.kind {
             // literals
-            crate::ast::expr::ExprKind::Integer { value: _ } => Type::Integer,
-            crate::ast::expr::ExprKind::Float { value: _ } => Type::Float,
-            crate::ast::expr::ExprKind::String { value: _ } => Type::String,
-            crate::ast::expr::ExprKind::Boolean { value: _ } => Type::Boolean,
+            ExprKind::Integer { value: _ } => Ok(Type::Integer),
+            ExprKind::Float { value: _ } => Ok(Type::Float),
+            ExprKind::String { value: _ } => Ok(Type::String),
+            ExprKind::Boolean { value: _ } => Ok(Type::Boolean),
 
             // symbols/values
-            crate::ast::expr::ExprKind::Ident { name } => {
+            ExprKind::Ident { name } => {
                 if let Some(value) = self.lookup(&name) {
-                    return value.typ;
+                    return Ok(value.typ);
                 }
-                return Type::Nil;
+                return Ok(Type::Nil);
             }
 
-            crate::ast::expr::ExprKind::Assignment { assignee, value, op: _ } => {
-                match assignee.kind {
-                    ExprKind::Ident { name: _ } => {}
-                    _ => panic!("assignee not a ident"),
+            ExprKind::Assignment { assignee, value, op: _ } => {
+                let name: &String;
+                match &assignee.kind {
+                    ExprKind::Ident { name: n } => name = n,
+                    _ => return Err(Error::new(ErrorKind::SyntaxError, assignee.span.clone(), assignee.span.clone(), "cannot assign to a non-identifier", true)),
                 }
 
-                let original_type = self.resolve_expr(&assignee);
-                let new_type = self.resolve_expr(&value);
+                // get the assignee value details
+                match self.lookup(name) {
+                    Some(value) => if !value.mutable {
+                        panic!("Can't mutate this variable muchacho");
+                    },
+                    None => panic!("Yo that identifier doesn't exist"),
+                }
+
+                let original_type = self.resolve_expr(&assignee)?;
+                let new_type = self.resolve_expr(&value)?;
 
                 // assert similarity
                 if original_type != new_type {
                     panic!("wrong type brochacho!!!");
                 }
 
-                return new_type;
+                return Ok(new_type);
             }
 
-            crate::ast::expr::ExprKind::Binary { lhs, rhs, op: _ } => {
-                let lhs_type = self.resolve_expr(&lhs);
-                let rhs_type = self.resolve_expr(&rhs);
+            ExprKind::Binary { lhs, rhs, op: _ } => {
+                let lhs_type = self.resolve_expr(&lhs)?;
+                let rhs_type = self.resolve_expr(&rhs)?;
 
                 if lhs_type == rhs_type {
-                    return lhs_type;
+                    return Ok(lhs_type);
                 }
 
                 if
                     (lhs_type == Type::Integer && rhs_type == Type::Float) ||
                     (lhs_type == Type::Float && rhs_type == Type::Integer)
                 {
-                    return Type::Float;
+                    return Ok(Type::Float);
                 }
 
                 panic!("cant add these two things brother");

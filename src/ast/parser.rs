@@ -2,8 +2,8 @@ use crate::token::{ Token, TokenKind };
 use super::{ expr::{ Expr, ExprKind, Operator }, stmt::{ Stmt, StmtKind } };
 
 pub struct Parser {
+    pub ast: Vec<Stmt>,
     source: Vec<Token>,
-    ast: Vec<Stmt>,
     pos: usize,
 }
 
