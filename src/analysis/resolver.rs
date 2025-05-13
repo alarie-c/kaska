@@ -55,9 +55,10 @@ impl<'a> Resolver<'a> {
         // iterate through backwards, starting at the current scope and working
         // our way to the front of the scope vec (global scope)
         for i in (0..=self.curr_scope).rev() {
-            let _ = &self.scopes[i].lookup(name).and_then(|v| {
-                return Some(v);
-            });
+            match self.scopes[i].lookup(name) {
+                Some(v) => return Some(v),
+                None => continue,
+            }
         }
         return None;
     }
@@ -94,7 +95,7 @@ impl<'a> Resolver<'a> {
                                 ErrorKind::TypeMismatch,
                                 value.span.clone(),
                                 format!(
-                                    "declaration has the type annotation '{}' but the the type of the value is '{}' and cannot be coerced to '{}'",
+                                    "declaration has the type annotation '{}' but the the type of the value is '{}' and it cannot be coerced to '{}'",
                                     strong_type,
                                     value_type,
                                     strong_type

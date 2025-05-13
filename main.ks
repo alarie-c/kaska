@@ -1,1 +1,2 @@
-"yellow" = 5;
+mut s: int = 4;
+s = 50;
