@@ -22,3 +22,4 @@ A language with which to program, broham. See what I did there?
 - [x] Type Checking + Name Resolution
 - [ ] Lowering to Kaska Bytecode
 - [ ] build the vm brochacho
+

@@ -1,5 +1,6 @@
 use std::fmt::Display;
-use crate::span::{formatted_content, line_number, Span};
+use crate::span::Span;
+//use crate::span::{ formatted_content, line_number, Span };
 
 pub type ErrorBuffer = Vec<Error>;
 
@@ -7,32 +8,30 @@ pub type ErrorBuffer = Vec<Error>;
 pub struct Error {
     kind: ErrorKind,
     span: Span,
-    underline: Span,
     msg: String,
     abort: bool,
 }
 
 impl Error {
-    pub fn new(kind: ErrorKind, span: Span, underline: Span, msg: &str, abort: bool) -> Error {
+    pub fn new(kind: ErrorKind, span: Span, msg: &str, abort: bool) -> Error {
         Error {
             kind,
             span,
-            underline,
             msg: msg.to_string(),
             abort,
         }
     }
 
-    pub fn report(&self, source: &String) {
-        let line_number = line_number(&self.span, source);
-        let content = formatted_content(&self.span, &self.underline, source);
+    // pub fn report(&self, source: &String) {
+    //     let line_number = line_number(&self.span, source);
+    //     let content = formatted_content(&self.span, &self.underline, source);
 
-        println!("[Error] line {}: {}", line_number, self.kind);
-        if content.is_some() {
-            println!("{}", content.unwrap());
-        }
-        println!("{}", self.msg);
-    }
+    //     println!("[Error] line {}: {}", line_number, self.kind);
+    //     if content.is_some() {
+    //         println!("{}", content.unwrap());
+    //     }
+    //     println!("{}", self.msg);
+    // }
 }
 
 #[derive(Debug)]
@@ -42,6 +41,7 @@ pub enum ErrorKind {
     ParseError,
     TypeMismatch,
     AssignToConstant,
+    UnknownIdentifier,
 }
 
 impl Display for ErrorKind {
@@ -52,6 +52,7 @@ impl Display for ErrorKind {
             ErrorKind::ParseError => write!(f, "parse error"),
             ErrorKind::TypeMismatch => write!(f, "type mistmatch"),
             ErrorKind::AssignToConstant => write!(f, "tried to assign to a constant"),
+            ErrorKind::UnknownIdentifier => write!(f, "unknown identifier"),
         }
     }
 }
