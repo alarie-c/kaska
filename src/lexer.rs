@@ -41,6 +41,9 @@ impl<'a> Lexer<'a> {
                     self.push(TokenKind::Minus, start..self.pos, "-");
                 }
 
+                '+' => self.push(TokenKind::Plus, start..start, "+"),
+
+
                 ':' => self.push(TokenKind::Colon, start..start, ":"),
                 ';' => self.push(TokenKind::Semicolon, start..start, ";"),
                 ',' => self.push(TokenKind::Comma, start..start, ","),

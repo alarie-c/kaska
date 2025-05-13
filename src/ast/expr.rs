@@ -68,6 +68,7 @@ pub enum Operator {
 impl Operator {
     pub fn expect_binary(tk: &TokenKind) -> Option<Operator> {
         match tk {
+            TokenKind::Plus => Some(Operator::Plus),
             TokenKind::Minus => Some(Operator::Minus),
             _ => None,
         }

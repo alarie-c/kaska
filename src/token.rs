@@ -39,6 +39,7 @@ pub enum TokenKind {
     RBrac,
 
     Minus,
+    Plus,
 
     // other operators/symbols
     Equal,

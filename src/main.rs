@@ -12,6 +12,7 @@ mod lexer;
 mod ast;
 mod analysis;
 mod errors;
+mod compiler;
 
 /// Opens the file path and returns the contents as a `String`.
 /// Panics on error.
@@ -48,12 +49,14 @@ fn main() {
     let mut resolver = Resolver::new(&ast);
     let errors: ErrorBuffer = resolver.resolve();
 
+    let _ = compiler::compiler::Compiler::compile_file(&String::from("main"), &ast);
+
+
     // println!("{}", errors.len());
     // for err in errors {
     //     err.report(&source_code);
     // }
 
     println!("{:#?}", errors);
-
     println!("{:#?}", ast);
 }
