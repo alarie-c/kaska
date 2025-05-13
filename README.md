@@ -9,7 +9,7 @@ A language with which to program, broham. See what I did there?
 - [x] Span Integration
 - [x] Span Reporting
 - [x] Error Reporting Infrastructure
-- [ ] Error Reporting Integration
+- [x] Error Reporting Integration
 - [x] Expr, Stmt, Decl Infrastructure
 - [x] Parser Setup
 - [x] Basic Expr Parsing
@@ -20,6 +20,6 @@ A language with which to program, broham. See what I did there?
 - [x] Setup Typing Infrastructure
 - [x] Resolver Infrastructure
 - [x] Type Checking + Name Resolution
-- [ ] Lowering to Kaska Bytecode
+- [x] Lowering to Kaska Bytecode
 - [ ] build the vm brochacho
 

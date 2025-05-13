@@ -2,6 +2,7 @@ use std::{ env, fs };
 
 use analysis::resolver::Resolver;
 use ast::{parser::Parser, stmt::Stmt};
+use compile::frontend::Compiler;
 use errors::ErrorBuffer;
 use lexer::Lexer;
 use token::Token;
@@ -12,7 +13,7 @@ mod lexer;
 mod ast;
 mod analysis;
 mod errors;
-mod compiler;
+mod compile;
 
 /// Opens the file path and returns the contents as a `String`.
 /// Panics on error.
@@ -49,8 +50,8 @@ fn main() {
     let mut resolver = Resolver::new(&ast);
     let errors: ErrorBuffer = resolver.resolve();
 
-    let _ = compiler::compiler::Compiler::compile_file(&String::from("main"), &ast);
-
+    let mut compiler = Compiler::new(&ast);
+    let _ = compiler.compile(String::from("main"));
 
     // println!("{}", errors.len());
     // for err in errors {
