@@ -1,30 +1,39 @@
-use crate::token::{ Token, TokenKind };
+use crate::{errors::{Error, ErrorBuffer, ErrorKind}, token::{ Token, TokenKind }};
 use super::{ expr::{ Expr, ExprKind, Operator }, stmt::{ Stmt, StmtKind } };
 
+pub type AST = Vec<Stmt>;
+
 pub struct Parser {
-    pub ast: Vec<Stmt>,
     source: Vec<Token>,
     pos: usize,
 }
 
 impl Parser {
     pub fn new(source: Vec<Token>) -> Parser {
-        Parser { source, ast: vec![], pos: 0 }
+        Parser { source, pos: 0 }
     }
 
     /// Parse the entirety of the source file into a vector of statements
     /// all of which are made of sub expressiosn
-    pub fn parse(&mut self) -> &Vec<Stmt> {
+    pub fn parse(&mut self) -> (AST, ErrorBuffer) {
+        let mut errors: ErrorBuffer = vec![];
+        let mut ast: AST = vec![];
+        
         while self.current().kind != TokenKind::EOF {
-            if let Some(stmt) = self.parse_stmt() {
-                self.ast.push(stmt);
-            } else {
-                panic!("Got a non expression bro, what did you do...");
+            match self.parse_stmt() {
+                Ok(stmt) => ast.push(stmt),
+                Err(e) => errors.push(e),
             }
+
+            // Consume the semicolon that should follow
+            if !self.expect(TokenKind::Semicolon) {
+                errors.push(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected semicolon to end statement", true));
+            }
+
             self.advance();
         }
 
-        return &self.ast;
+        return (ast, errors);
     }
 }
 
@@ -52,7 +61,6 @@ impl Parser {
             self.advance();
             return true;
         }
-        println!("Expected: {:?}, Got: {:?}", next_tk, self.peek().kind);
         return false;
     }
 
@@ -73,17 +81,15 @@ impl Parser {
     /// * booleans
     /// * identifiers
     /// * (eventually) arrays/matrices/quaternions/ etc.
-    fn parse_literal(&mut self) -> Option<Expr> {
+    fn parse_literal(&mut self) -> Result<Expr, Error> {
         let tk = self.current();
-        let mut expr: Option<Expr> = None;
-
         match tk.kind {
             // integer literal
             TokenKind::Integer => {
                 let lex = tk.lexeme.replace("_", ""); // remove underscores
                 let value = lex.parse::<i32>();
                 if value.is_ok() {
-                    expr = Some(
+                    return Ok(
                         Expr::new(ExprKind::Integer { value: value.unwrap() }, tk.span.clone())
                     );
                 }
@@ -94,7 +100,7 @@ impl Parser {
                 let lex = tk.lexeme.replace("_", ""); // remove underscores
                 let value = lex.parse::<f32>();
                 if value.is_ok() {
-                    expr = Some(
+                    return Ok(
                         Expr::new(ExprKind::Float { value: value.unwrap() }, tk.span.clone())
                     );
                 }
@@ -102,39 +108,37 @@ impl Parser {
 
             // string literals
             TokenKind::String => {
-                expr = Some(
+                return Ok(
                     Expr::new(ExprKind::String { value: tk.lexeme.to_owned() }, tk.span.clone())
                 );
             }
 
             // identifier literal
             TokenKind::Ident => {
-                expr = Some(
+                return Ok(
                     Expr::new(ExprKind::Ident { name: tk.lexeme.to_owned() }, tk.span.clone())
                 );
             }
 
             // boolean literals
             TokenKind::False => {
-                expr = Some(Expr::new(ExprKind::Boolean { value: false }, tk.span.clone()));
+                return Ok(Expr::new(ExprKind::Boolean { value: false }, tk.span.clone()));
             }
             TokenKind::True => {
-                expr = Some(Expr::new(ExprKind::Boolean { value: true }, tk.span.clone()));
+                return Ok(Expr::new(ExprKind::Boolean { value: true }, tk.span.clone()));
             }
             _ => {}
         }
 
-        // return expr none or some
-        return expr;
+        return Err(Error::new(ErrorKind::ParseError, tk.span.clone(), "expected a primary expression", true));
     }
 
     /// Looks for literally any binary operator possible and constructs a binary expression
     /// out of it and the expressions surrounding it.
-    fn parse_binary(&mut self) -> Option<Expr> {
+    fn parse_binary(&mut self) -> Result<Expr, Error> {
         let mut expr = self.parse_literal()?;
 
         if let Some(op) = Operator::expect_binary(&self.peek().kind) {
-            println!("Entered binary");
             self.advance(); // consume the operator
             self.advance(); // go to next expr
             let rhs = self.parse_expr()?;
@@ -145,10 +149,10 @@ impl Parser {
             );
         }
 
-        return Some(expr);
+        return Ok(expr);
     }
 
-    fn parse_assignment(&mut self) -> Option<Expr> {
+    fn parse_assignment(&mut self) -> Result<Expr, Error> {
         let mut expr = self.parse_binary()?;
 
         if let Some(op) = Operator::expect_assign(&self.peek().kind) {
@@ -162,11 +166,11 @@ impl Parser {
             );
         }
 
-        return Some(expr);
+        return Ok(expr);
     }
 
     /// Top level expr parser, just returns the result of parsing any expression starting at `parse_assignment()`
-    fn parse_expr(&mut self) -> Option<Expr> {
+    fn parse_expr(&mut self) -> Result<Expr, Error> {
         return self.parse_assignment();
     }
 }
@@ -174,7 +178,7 @@ impl Parser {
 impl Parser {
     /// Stmt parser that parses a variable declaration including optional strong types and let/mut
     /// mutability distinction built into the parser.
-    fn parse_variable_decl(&mut self) -> Option<Stmt> {
+    fn parse_variable_decl(&mut self) -> Result<Stmt, Error> {
         let tk = self.current();
 
         // set mutability based on leading token keyword
@@ -191,35 +195,31 @@ impl Parser {
         // get strong type after colon
         if self.expect(TokenKind::Colon) {
             self.advance(); // go to start of type expr
-            if let Some(expr) = self.parse_literal() {
+            if let Ok(expr) = self.parse_literal() {
                 typ = Some(Box::new(expr));
             } else {
-                panic!("Expected valid type expression after COLON");
+                return Err(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected type name", true));
             }
         }
 
         if !self.expect(TokenKind::Equal) {
-            panic!("Expected EQUAL after variable declaration");
+            return Err(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected value after variable definition", true));
         }
 
         self.advance(); // move to beginning of value expr;
-        match self.parse_expr() {
-            Some(expr) => {
-                let span = tk.span.start..expr.span.end;
-                return Some(
-                    Stmt::new(
-                        StmtKind::VariableDecl {
-                            mutable,
-                            name,
-                            value: Box::new(expr),
-                            typ,
-                        },
-                        span
-                    )
-                );
-            }
-            None => panic!("Expected a valid value after variable decl"),
-        }
+        let value = self.parse_expr()?;
+        let span = tk.span.start..value.span.end;
+        return Ok(
+            Stmt::new(
+                StmtKind::VariableDecl {
+                    mutable,
+                    name,
+                    value: Box::new(value),
+                    typ,
+                },
+                span
+            )
+        );
     }
 
     /// Top level stmt parser, determines which stmt parser to use based on the keyword at the beginning of the line.
@@ -231,30 +231,24 @@ impl Parser {
     /// * for loops
     /// * while loops
     /// * if/else
-    fn parse_stmt(&mut self) -> Option<Stmt> {
+    fn parse_stmt(&mut self) -> Result<Stmt, Error> {
         let tk = self.current();
-        let mut stmt: Option<Stmt> = None;
 
         match tk.kind {
-            TokenKind::Let | TokenKind::Mut => {
-                stmt = self.parse_variable_decl();
-            }
+            TokenKind::Let | TokenKind::Mut => self.parse_variable_decl(),
 
             // match on expression statements
-            _ => if let Some(expr) = self.parse_expr() {
+            _ => {
+                let expr = self.parse_expr()?;
                 match expr.kind {
                     ExprKind::Assignment { assignee: _, value: _, op: _ } => {
                         let span = expr.span.clone();
-                        stmt = Some(Stmt::new(StmtKind::Expression { expr: Box::new(expr) }, span));
+                        return Ok(Stmt::new(StmtKind::Expression { expr: Box::new(expr) }, span));
                     }
-                    _ => panic!("..."),
+                    _ => {},
                 }
+                return Err(Error::new(ErrorKind::SyntaxError, tk.span.clone(), "expressions must be meaningful to exit on their own", true));
             }
         }
-
-        if !self.expect(TokenKind::Semicolon) {
-            panic!("Expected a SEMICOLON after statement");
-        }
-        return stmt;
     }
 }
