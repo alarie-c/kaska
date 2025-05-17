@@ -48,11 +48,39 @@ pub enum TokenKind {
     LBrac,
     RBrac,
 
-    Minus,
+    // arithmetic operators
     Plus,
+    PlusPlus,
+    PlusEqual,
+    Minus,
+    MinusMinus,
+    MinusEqual,
+    Star,
+    StarStar,
+    StarEqual,
+    StarStarEqual,
+    Slash,
+    SlashSlash,
+    SlashEqual,
+    SlashSlashEqual,
+
+    // comparison operators
+    Less,
+    LessEqual,
+    More,
+    MoreEqual,
+    Equal,
+    EqualEqual,
+    Bang,
+    BangEqual,
+
+    // logical operators
+    Pipe,
+    PipePipe,
+    Amprsnd,
+    AmprsndAmprsnd,
 
     // other operators/symbols
-    Equal,
     RArrow,
     Colon,
     Semicolon,
@@ -72,6 +100,13 @@ pub enum TokenKind {
     Return,
     Let,
     Mut,
+    If,
+    Else,
+    For,
+    While,
+    Break,
+    Class,
+    Enum,
 }
 
 impl TokenKind {
@@ -85,6 +120,13 @@ impl TokenKind {
             "mut" => TokenKind::Mut,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
+            "if" => TokenKind::If,
+            "else" => TokenKind::Else,
+            "for" => TokenKind::For,
+            "while" => TokenKind::While,
+            "break" => TokenKind::Break,
+            "class" => TokenKind::Class,
+            "enum" => TokenKind::Enum,
             _ => TokenKind::Ident,
         }
     }
@@ -125,16 +167,83 @@ impl<'a> Lexer<'a> {
                 '{' => tokens.push(Token::new(TokenKind::LCurl, start..start, "{")),
                 '}' => tokens.push(Token::new(TokenKind::RCurl, start..start, "}")),
 
-                '=' => tokens.push(Token::new(TokenKind::Equal, start..start, "=")),
+                // double wide arithmetic operators
+                '+' => if self.expect('+') {
+                    tokens.push(Token::new(TokenKind::PlusPlus, start..self.pos, "++"));
+                } else if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::PlusEqual, start..self.pos, "+="));
+                } else {
+                    tokens.push(Token::new(TokenKind::Plus, start..self.pos, "+"));
+                }
 
-                // other operators/symbols
-                '-' => if self.expect('>') {
+                '-' => if self.expect('-') {
+                    tokens.push(Token::new(TokenKind::MinusMinus, start..self.pos, "--"));
+                } else if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::MinusEqual, start..self.pos, "-="));
+                } else if self.expect('>') {
                     tokens.push(Token::new(TokenKind::RArrow, start..self.pos, "->"));
                 } else {
                     tokens.push(Token::new(TokenKind::Minus, start..self.pos, "-"));
                 }
 
-                '+' => tokens.push(Token::new(TokenKind::Plus, start..start, "+")),
+                // triple wide arithmetic operators
+                '*' => if self.expect('*') {
+                    if self.expect('=') {
+                        tokens.push(Token::new(TokenKind::StarStarEqual, start..self.pos, "**="));
+                    } else {
+                        tokens.push(Token::new(TokenKind::StarStar, start..self.pos, "**"));
+                    }
+                } else if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::StarEqual, start..self.pos, "*="));
+                } else {
+                    tokens.push(Token::new(TokenKind::Star, start..self.pos, "*"));
+                }
+
+                '/' => if self.expect('/') {
+                    if self.expect('=') {
+                        tokens.push(Token::new(TokenKind::SlashSlashEqual, start..self.pos, "//="));
+                    } else {
+                        tokens.push(Token::new(TokenKind::SlashSlash, start..self.pos, "//"));
+                    }
+                } else if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::SlashEqual, start..self.pos, "/="));
+                } else {
+                    tokens.push(Token::new(TokenKind::Slash, start..self.pos, "/"));
+                }
+
+                // comparison operators
+                '<' => if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::LessEqual, start..self.pos, "<="));
+                } else {
+                    tokens.push(Token::new(TokenKind::Less, start..self.pos, "<"));
+                }
+                '>' => if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::MoreEqual, start..self.pos, ">="));
+                } else {
+                    tokens.push(Token::new(TokenKind::More, start..self.pos, ">"));
+                }
+                '=' => if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::EqualEqual, start..self.pos, "=="));
+                } else {
+                    tokens.push(Token::new(TokenKind::Equal, start..self.pos, "="));
+                }
+                '!' => if self.expect('=') {
+                    tokens.push(Token::new(TokenKind::BangEqual, start..self.pos, "!="));
+                } else {
+                    tokens.push(Token::new(TokenKind::Bang, start..self.pos, "!"));
+                }
+
+                // logical operators
+                '|' => if self.expect('|') {
+                    tokens.push(Token::new(TokenKind::PipePipe, start..self.pos, "||"));
+                } else {
+                    tokens.push(Token::new(TokenKind::Pipe, start..self.pos, "|"));
+                }
+                '&' => if self.expect('&') {
+                    tokens.push(Token::new(TokenKind::Amprsnd, start..self.pos, "&&"));
+                } else {
+                    tokens.push(Token::new(TokenKind::AmprsndAmprsnd, start..self.pos, "&"));
+                }
 
                 ':' => tokens.push(Token::new(TokenKind::Colon, start..start, ":")),
                 ';' => tokens.push(Token::new(TokenKind::Semicolon, start..start, ";")),

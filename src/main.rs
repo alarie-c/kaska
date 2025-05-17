@@ -7,14 +7,6 @@ mod compiler;
 
 const PATH: &'static str = "main.ks";
 
-/// Opens the file path and returns the contents as a `String`.
-/// Panics on error.
-fn open_file(file_path: &String) -> String {
-    fs::read_to_string(file_path).unwrap_or_else(|_| {
-        panic!("There was an error reading the file!");
-    })
-}
-
 fn lex(source_code: &String) -> (Vec<Token>, ErrorBuffer) {
     let mut lexer = Lexer::new(&source_code);
     return lexer.lex();
@@ -26,7 +18,7 @@ fn parse(token_stream: Vec<Token>) -> (AST, ErrorBuffer) {
 }
 
 fn main() {
-    let source_code = open_file(&PATH.to_string());
+    let source_code = fs::read_to_string(&PATH).expect("There was an error reading the file!");
 
     // tokenize and debug
     let (tokens, lex_errs) = lex(&source_code);
