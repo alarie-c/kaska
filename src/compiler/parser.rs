@@ -1,5 +1,5 @@
-use crate::{errors::{Error, ErrorBuffer, ErrorKind}, token::{ Token, TokenKind }};
-use super::{ expr::{ Expr, ExprKind, Operator }, stmt::{ Stmt, StmtKind } };
+use crate::common::errors::{ Error, ErrorBuffer, ErrorKind };
+use super::{ ast::{ Expr, ExprKind, Operator, Stmt, StmtKind }, lexer::{ Token, TokenKind } };
 
 pub type AST = Vec<Stmt>;
 
@@ -18,7 +18,7 @@ impl Parser {
     pub fn parse(&mut self) -> (AST, ErrorBuffer) {
         let mut errors: ErrorBuffer = vec![];
         let mut ast: AST = vec![];
-        
+
         while self.current().kind != TokenKind::EOF {
             match self.parse_stmt() {
                 Ok(stmt) => ast.push(stmt),
@@ -27,7 +27,14 @@ impl Parser {
 
             // Consume the semicolon that should follow
             if !self.expect(TokenKind::Semicolon) {
-                errors.push(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected semicolon to end statement", true));
+                errors.push(
+                    Error::new(
+                        ErrorKind::SyntaxError,
+                        self.current().span.clone(),
+                        "expected semicolon to end statement",
+                        true
+                    )
+                );
             }
 
             self.advance();
@@ -130,7 +137,14 @@ impl Parser {
             _ => {}
         }
 
-        return Err(Error::new(ErrorKind::ParseError, tk.span.clone(), "expected a primary expression", true));
+        return Err(
+            Error::new(
+                ErrorKind::ParseError,
+                tk.span.clone(),
+                "expected a primary expression",
+                true
+            )
+        );
     }
 
     /// Looks for literally any binary operator possible and constructs a binary expression
@@ -198,12 +212,26 @@ impl Parser {
             if let Ok(expr) = self.parse_literal() {
                 typ = Some(Box::new(expr));
             } else {
-                return Err(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected type name", true));
+                return Err(
+                    Error::new(
+                        ErrorKind::SyntaxError,
+                        self.current().span.clone(),
+                        "expected type name",
+                        true
+                    )
+                );
             }
         }
 
         if !self.expect(TokenKind::Equal) {
-            return Err(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected value after variable definition", true));
+            return Err(
+                Error::new(
+                    ErrorKind::SyntaxError,
+                    self.current().span.clone(),
+                    "expected value after variable definition",
+                    true
+                )
+            );
         }
 
         self.advance(); // move to beginning of value expr;
@@ -245,9 +273,16 @@ impl Parser {
                         let span = expr.span.clone();
                         return Ok(Stmt::new(StmtKind::Expression { expr: Box::new(expr) }, span));
                     }
-                    _ => {},
+                    _ => {}
                 }
-                return Err(Error::new(ErrorKind::SyntaxError, tk.span.clone(), "expressions must be meaningful to exit on their own", true));
+                return Err(
+                    Error::new(
+                        ErrorKind::SyntaxError,
+                        tk.span.clone(),
+                        "expressions must be meaningful to exit on their own",
+                        true
+                    )
+                );
             }
         }
     }

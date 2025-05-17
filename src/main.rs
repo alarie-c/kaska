@@ -1,53 +1,51 @@
-use std::{ env, fs };
-use analysis::resolver::Resolver;
-use ast::{parser::Parser, stmt::Stmt};
-use compile::frontend::Compiler;
-use errors::ErrorBuffer;
-use lexer::Lexer;
-use token::Token;
+use std::fs;
+use common::errors::{ check_errs_for_abort, ErrorBuffer };
+use compiler::{ lexer::{ Lexer, Token }, parser::{ Parser, AST } };
 
-mod span;
-mod token;
-mod lexer;
-mod ast;
-mod analysis;
-mod errors;
-mod compile;
+mod common;
+mod compiler;
 
 const PATH: &'static str = "main.ks";
 
 /// Opens the file path and returns the contents as a `String`.
 /// Panics on error.
-fn open_file(file_path: &str) -> String {
+fn open_file(file_path: &String) -> String {
     fs::read_to_string(file_path).unwrap_or_else(|_| {
         panic!("There was an error reading the file!");
     })
 }
 
-fn main() {
-    let source_code = open_file(&PATH);
-    println!("Source:\n{}", source_code);
-
+fn lex(source_code: &String) -> (Vec<Token>, ErrorBuffer) {
     let mut lexer = Lexer::new(&source_code);
-    lexer.lex();
-    lexer.dump();
+    return lexer.lex();
+}
 
-    // move tokens out of lexer
-    let mut tokens: Vec<Token> = vec![];
-    _ = std::mem::replace(&mut tokens, lexer.tokens);
+fn parse(token_stream: Vec<Token>) -> (AST, ErrorBuffer) {
+    let mut parser = Parser::new(token_stream);
+    return parser.parse();
+}
 
-    // parse and print errors
-    let mut parser = Parser::new(tokens);
-    let (ast, parser_errors) = parser.parse();
-    println!("AST:\n{:#?}", ast);
-    println!("PARSER ERRORS:\n{:#?}", parser_errors);
+fn main() {
+    let source_code = open_file(&PATH.to_string());
 
-    // name resolution and semantic analysis
-    let mut resolver = Resolver::new(&ast);
-    let resolver_errors: ErrorBuffer = resolver.resolve();
-    println!("SEMANTIC ERRORS:\n{:#?}", resolver_errors);
+    // tokenize and debug
+    let (tokens, lex_errs) = lex(&source_code);
+    println!("[[ TOKENS ]{:#?}", tokens);
 
-    // fire up the compiler and write some bytecode YEAAAAH
-    let mut compiler = Compiler::new(&ast);
-    let _ = compiler.compile(String::from("main"));
+    // parse and debug
+    let (ast, parse_errs) = parse(tokens);
+    println!("[[ AST ]{:#?}", ast);
+
+    // print errors
+    print!("[[ ERRORS ]");
+    print!("{:#?}", lex_errs);
+    print!("{:#?}\n", parse_errs);
+
+    // determine testing error code from errors
+    let code: i32 = match check_errs_for_abort(&lex_errs) || check_errs_for_abort(&parse_errs) {
+        true => -1,
+        false => 0,
+    };
+
+    std::process::exit(code);
 }

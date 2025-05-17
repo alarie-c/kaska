@@ -1,18 +1,34 @@
 use std::fmt::Display;
-use crate::span::Span;
-//use crate::span::{ formatted_content, line_number, Span };
+use super::span::Span;
 
 pub type ErrorBuffer = Vec<Error>;
 
+/// Takes an error buffer and returns true of one or more of the errors
+/// will abort compilation
+pub fn check_errs_for_abort(buffer: &ErrorBuffer) -> bool {
+    return buffer.iter().any(|err| err.abort == true);
+}
+
 #[derive(Debug)]
 pub struct Error {
+    /// Refers to the kind of error and may or may not have
+    /// some extra data that will be used for reporting
     kind: ErrorKind,
+
+    /// Refers to the offending part of the code, this is the part
+    /// that will be underlined with carets when reported
     span: Span,
+
+    /// The help message to be printed underneath the offending code
+    /// when this error is reported
     msg: String,
+
+    /// Whether or not this error will abort compilation
     abort: bool,
 }
 
 impl Error {
+    /// Quick way to create a new error, default constructor
     pub fn new(kind: ErrorKind, span: Span, msg: &str, abort: bool) -> Error {
         Error {
             kind,
@@ -21,17 +37,6 @@ impl Error {
             abort,
         }
     }
-
-    // pub fn report(&self, source: &String) {
-    //     let line_number = line_number(&self.span, source);
-    //     let content = formatted_content(&self.span, &self.underline, source);
-
-    //     println!("[Error] line {}: {}", line_number, self.kind);
-    //     if content.is_some() {
-    //         println!("{}", content.unwrap());
-    //     }
-    //     println!("{}", self.msg);
-    // }
 }
 
 #[derive(Debug)]

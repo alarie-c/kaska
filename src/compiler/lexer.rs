@@ -1,7 +1,96 @@
-use crate::{ span::Span, token::{ Token, TokenKind } };
+use crate::common::{ errors::ErrorBuffer, span::Span };
+
+#[derive(Debug)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Span,
+    pub lexeme: String,
+}
+
+impl Token {
+    /// A little helper function to make token construction a little easier
+    fn new(kind: TokenKind, span: Span, lexeme: &str) -> Token {
+        return Token {
+            kind,
+            span,
+            lexeme: lexeme.to_string(),
+        };
+    }
+
+    /// Just creates an EOF token from the span given
+    pub fn eof(span: Span) -> Token {
+        Token {
+            kind: TokenKind::EOF,
+            span,
+            lexeme: "<EOF>".to_string(),
+        }
+    }
+
+    /// Self explanatory, Rust won't let me just implement the trait
+    pub fn copy(&self) -> Token {
+        Token {
+            kind: self.kind,
+            span: self.span.clone(),
+            lexeme: self.lexeme.to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum TokenKind {
+    EOF = 0,
+
+    // grouping operators
+    LParen,
+    RParen,
+    LCurl,
+    RCurl,
+    LBrac,
+    RBrac,
+
+    Minus,
+    Plus,
+
+    // other operators/symbols
+    Equal,
+    RArrow,
+    Colon,
+    Semicolon,
+    Comma,
+    Dot,
+
+    // literals
+    True,
+    False,
+    Ident,
+    String,
+    Integer,
+    Float,
+
+    // keywords
+    Def,
+    Return,
+    Let,
+    Mut,
+}
+
+impl TokenKind {
+    /// Takes a lexeme and eithe returns the keyword corresponding with the lexeme or
+    /// identifier in the case that the lexeme has no token kind.
+    pub fn from_lexeme(lexeme: &String) -> TokenKind {
+        match lexeme.as_str() {
+            "def" => TokenKind::Def,
+            "return" => TokenKind::Return,
+            "let" => TokenKind::Let,
+            "mut" => TokenKind::Mut,
+            "true" => TokenKind::True,
+            "false" => TokenKind::False,
+            _ => TokenKind::Ident,
+        }
+    }
+}
 
 pub struct Lexer<'a> {
-    pub tokens: Vec<Token>,
     source: &'a String,
     pos: usize,
 }
@@ -11,12 +100,16 @@ impl<'a> Lexer<'a> {
     pub fn new(source: &'a String) -> Lexer<'a> {
         Lexer {
             source,
-            tokens: vec![],
             pos: 0,
         }
     }
 
-    pub fn lex(&mut self) {
+    /// Takes the input given to the lexer and iterates through, creating tokens
+    /// and eventually returning them as a vector
+    pub fn lex(&mut self) -> (Vec<Token>, ErrorBuffer) {
+        let mut tokens = Vec::<Token>::new();
+        let mut errors: ErrorBuffer = vec![];
+
         while let Some(ch) = self.current() {
             let start = self.pos;
 
@@ -25,29 +118,28 @@ impl<'a> Lexer<'a> {
                 ' ' | '\t' | '\r' | '\n' => {}
 
                 // grouping operators
-                '(' => self.push(TokenKind::LParen, start..start, "("),
-                ')' => self.push(TokenKind::RParen, start..start, ")"),
-                '[' => self.push(TokenKind::LBrac, start..start, "["),
-                ']' => self.push(TokenKind::RBrac, start..start, "]"),
-                '{' => self.push(TokenKind::LCurl, start..start, "{"),
-                '}' => self.push(TokenKind::RCurl, start..start, "}"),
+                '(' => tokens.push(Token::new(TokenKind::LParen, start..start, "(")),
+                ')' => tokens.push(Token::new(TokenKind::RParen, start..start, ")")),
+                '[' => tokens.push(Token::new(TokenKind::LBrac, start..start, "[")),
+                ']' => tokens.push(Token::new(TokenKind::RBrac, start..start, "]")),
+                '{' => tokens.push(Token::new(TokenKind::LCurl, start..start, "{")),
+                '}' => tokens.push(Token::new(TokenKind::RCurl, start..start, "}")),
 
-                '=' => self.push(TokenKind::Equal, start..start, "="),
+                '=' => tokens.push(Token::new(TokenKind::Equal, start..start, "=")),
 
                 // other operators/symbols
                 '-' => if self.expect('>') {
-                    self.push(TokenKind::RArrow, start..self.pos, "->");
+                    tokens.push(Token::new(TokenKind::RArrow, start..self.pos, "->"));
                 } else {
-                    self.push(TokenKind::Minus, start..self.pos, "-");
+                    tokens.push(Token::new(TokenKind::Minus, start..self.pos, "-"));
                 }
 
-                '+' => self.push(TokenKind::Plus, start..start, "+"),
+                '+' => tokens.push(Token::new(TokenKind::Plus, start..start, "+")),
 
-
-                ':' => self.push(TokenKind::Colon, start..start, ":"),
-                ';' => self.push(TokenKind::Semicolon, start..start, ";"),
-                ',' => self.push(TokenKind::Comma, start..start, ","),
-                '.' => self.push(TokenKind::Dot, start..start, "."),
+                ':' => tokens.push(Token::new(TokenKind::Colon, start..start, ":")),
+                ';' => tokens.push(Token::new(TokenKind::Semicolon, start..start, ";")),
+                ',' => tokens.push(Token::new(TokenKind::Comma, start..start, ",")),
+                '.' => tokens.push(Token::new(TokenKind::Dot, start..start, ".")),
 
                 '"' => {
                     let mut lexeme = String::new();
@@ -71,7 +163,7 @@ impl<'a> Lexer<'a> {
                         }
                     }
 
-                    self.tokens.push(Token {
+                    tokens.push(Token {
                         kind: TokenKind::String,
                         span: start..self.pos,
                         lexeme,
@@ -91,7 +183,7 @@ impl<'a> Lexer<'a> {
                     }
 
                     let kind = TokenKind::from_lexeme(&lexeme);
-                    self.tokens.push(Token { kind, span: start..self.pos, lexeme });
+                    tokens.push(Token { kind, span: start..self.pos, lexeme });
                 }
 
                 '0'..='9' => {
@@ -133,18 +225,16 @@ impl<'a> Lexer<'a> {
                         self.advance();
                         lexeme.push(next_ch);
                     }
-                    self.tokens.push(Token { kind, span: start..self.pos, lexeme });
+                    tokens.push(Token { kind, span: start..self.pos, lexeme });
                 }
                 _ => panic!("Unexpected token: '{}'", ch),
             }
             self.advance();
         }
-        self.tokens.push(Token::eof(self.pos..self.pos));
-    }
 
-    /// Just prints out the entirety of the tokens vector
-    pub fn dump(&self) {
-        println!("{:#?}", self.tokens);
+        // sneak a little EOF to cap off the token stream
+        tokens.push(Token::eof(self.pos..self.pos));
+        return (tokens, errors);
     }
 }
 
@@ -182,11 +272,5 @@ impl<'a> Lexer<'a> {
         if self.source.len() > self.pos {
             self.pos += 1;
         }
-    }
-
-    /// Takes some basic token paramteres and pushes a new token to the output.
-    /// Takes lexeme as as string slice and turns it into an owned string upon token instantiation.
-    fn push(&mut self, kind: TokenKind, span: Span, lexeme: &str) {
-        self.tokens.push(Token { kind, span, lexeme: lexeme.to_string() });
     }
 }
