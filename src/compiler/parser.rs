@@ -139,7 +139,7 @@ impl Parser {
 
         return Err(
             Error::new(
-                ErrorKind::ParseError,
+                ErrorKind::SyntaxError,
                 tk.span.clone(),
                 "expected a primary expression",
                 true

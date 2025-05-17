@@ -1,4 +1,4 @@
-use crate::common::{ errors::ErrorBuffer, span::Span };
+use crate::common::{ errors::{ Error, ErrorBuffer, ErrorKind }, span::Span };
 
 #[derive(Debug)]
 pub struct Token {
@@ -159,7 +159,17 @@ impl<'a> Lexer<'a> {
                             }
 
                             // uh oh cherio
-                            None => panic!("Unterminated string literal, yo"),
+                            None => {
+                                errors.push(
+                                    Error::new(
+                                        ErrorKind::SyntaxError,
+                                        start..self.pos,
+                                        "string literal is missing a closing '\"'",
+                                        true
+                                    )
+                                );
+                                break;
+                            }
                         }
                     }
 
@@ -227,7 +237,15 @@ impl<'a> Lexer<'a> {
                     }
                     tokens.push(Token { kind, span: start..self.pos, lexeme });
                 }
-                _ => panic!("Unexpected token: '{}'", ch),
+                _ =>
+                    errors.push(
+                        Error::new(
+                            ErrorKind::IllegalCharacter,
+                            start..self.pos,
+                            "this character is not allowed",
+                            true
+                        )
+                    ),
             }
             self.advance();
         }
