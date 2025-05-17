@@ -1,6 +1,6 @@
 use std::fs;
 use common::errors::{ check_errs_for_abort, ErrorBuffer };
-use compiler::{ lexer::{ Lexer, Token }, parser::{ Parser, AST } };
+use compiler::{ lexer::{ Lexer, Token }, parser };
 
 mod common;
 mod compiler;
@@ -12,11 +12,6 @@ fn lex(source_code: &String) -> (Vec<Token>, ErrorBuffer) {
     return lexer.lex();
 }
 
-fn parse(token_stream: Vec<Token>) -> (AST, ErrorBuffer) {
-    let mut parser = Parser::new(token_stream);
-    return parser.parse();
-}
-
 fn main() {
     let source_code = fs::read_to_string(&PATH).expect("There was an error reading the file!");
 
@@ -25,7 +20,7 @@ fn main() {
     println!("[[ TOKENS ]{:#?}", tokens);
 
     // parse and debug
-    let (ast, parse_errs) = parse(tokens);
+    let (ast, parse_errs) = parser::parse(tokens);
     println!("[[ AST ]{:#?}", ast);
 
     // print errors

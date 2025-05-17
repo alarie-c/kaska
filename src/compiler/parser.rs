@@ -3,44 +3,44 @@ use super::{ ast::{ Expr, ExprKind, Operator, Stmt, StmtKind }, lexer::{ Token, 
 
 pub type AST = Vec<Stmt>;
 
+/// High level interface for the caller of this function,
+/// basically allowed streamlined snatching of the error buffer from
+/// the parser before returning, that way the error buffer is owned
+/// when returned.
+pub fn parse(source: Vec<Token>) -> (AST, ErrorBuffer) {
+    let mut parser = Parser::new(source);
+    let ast = parser.parse();
+
+    let mut errors: ErrorBuffer = vec![];
+    let _ = std::mem::replace(&mut errors, parser.errors);
+    return (ast, errors);
+}
+
 pub struct Parser {
+    errors: ErrorBuffer,
     source: Vec<Token>,
     pos: usize,
 }
 
 impl Parser {
     pub fn new(source: Vec<Token>) -> Parser {
-        Parser { source, pos: 0 }
+        Parser { errors: vec![], source, pos: 0 }
     }
 
     /// Parse the entirety of the source file into a vector of statements
     /// all of which are made of sub expressiosn
-    pub fn parse(&mut self) -> (AST, ErrorBuffer) {
-        let mut errors: ErrorBuffer = vec![];
+    pub fn parse(&mut self) -> AST {
         let mut ast: AST = vec![];
 
         while self.current().kind != TokenKind::EOF {
             match self.parse_stmt() {
                 Ok(stmt) => ast.push(stmt),
-                Err(e) => errors.push(e),
+                Err(e) => self.errors.push(e),
             }
-
-            // Consume the semicolon that should follow
-            if !self.expect(TokenKind::Semicolon) {
-                errors.push(
-                    Error::new(
-                        ErrorKind::SyntaxError,
-                        self.current().span.clone(),
-                        "expected semicolon to end statement",
-                        true
-                    )
-                );
-            }
-
             self.advance();
         }
 
-        return (ast, errors);
+        return ast;
     }
 }
 
@@ -69,6 +69,27 @@ impl Parser {
             return true;
         }
         return false;
+    }
+
+    /// Basicalyl exactly the same as expect but returns a syntax error if the token isn't found
+    fn assert_err(&mut self, next_tk: TokenKind, msg: &str) -> Result<(), Error> {
+        if self.peek().kind == next_tk {
+            self.advance();
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::SyntaxError, self.current().span.clone(), msg, true));
+    }
+
+    /// Advances a token and pushes a syntax error if it wasn't what was expected
+    fn assert(&mut self, next_tk: TokenKind, msg: &str) {
+        if self.peek().kind == next_tk {
+            self.advance();
+            return;
+        }
+        self.errors.push(
+            Error::new(ErrorKind::SyntaxError, self.current().span.clone(), msg, true)
+        );
+        self.advance();
     }
 
     /// Move the position one step ahead <=> pos is not at end
@@ -190,6 +211,103 @@ impl Parser {
 }
 
 impl Parser {
+    fn parse_proc_decl(&mut self) -> Result<Stmt, Error> {
+        let tk = self.current();
+
+        // get the name
+        self.assert(TokenKind::Ident, "expected procedure name after 'def'");
+        let name = self.current().lexeme.to_owned();
+
+        // TODO: generic implementation `proc<T>()`
+
+        // begin parameters
+        self.assert(TokenKind::LParen, "expected '(' after procedure name");
+        self.advance(); // skip the lparen now
+        let mut params = Vec::<Expr>::new();
+
+        // gather up all the parameters
+        if self.current().kind != TokenKind::RParen {
+            self.pos -= 1;
+            loop {
+                // name
+                self.assert(TokenKind::Ident, "expected parameter name");
+                let span_start = self.current().span.start;
+                let name = self.current().lexeme.to_owned();
+
+                // type
+                self.assert(TokenKind::Colon, "expected type after parameter name");
+                self.advance(); // skip the colon
+                let ty = self.parse_expr()?;
+                let span_end = ty.span.end;
+
+                params.push(
+                    Expr::new(ExprKind::Parameter { name, ty: Box::new(ty) }, span_start..span_end)
+                );
+
+                if self.expect(TokenKind::Comma) {
+                    continue;
+                } else {
+                    self.advance();
+                    break;
+                }
+            }
+        }
+
+        // close out the parameters
+        if self.current().kind != TokenKind::RParen {
+            return Err(
+                Error::new(
+                    ErrorKind::SyntaxError,
+                    self.current().span.clone(),
+                    "expected ')' to close procedure parameters",
+                    true
+                )
+            );
+        }
+
+        // get the return type
+        let mut returns: Option<Expr> = None;
+        if self.expect(TokenKind::RArrow) {
+            self.advance(); // skip the arrow
+            returns = Some(self.parse_expr()?);
+        }
+
+        // start getting the function body
+        let mut body = Vec::<Stmt>::new();
+        self.assert_err(TokenKind::LCurl, "expected procedure body")?;
+        self.advance(); // skip the lcurl
+
+        // gather up the stmts
+        loop {
+            if self.current().kind == TokenKind::RCurl {
+                break;
+            }
+
+            if self.current().kind == TokenKind::EOF {
+                self.errors.push(
+                    Error::new(
+                        ErrorKind::SyntaxError,
+                        self.current().span.clone(),
+                        "procedure body is missing a closing '}'",
+                        true
+                    )
+                );
+                break;
+            }
+
+            match self.parse_stmt() {
+                Ok(stmt) => body.push(stmt),
+                Err(e) => self.errors.push(e),
+            }
+            self.advance();
+        }
+
+        let span_end = self.current().span.end;
+        return Ok(
+            Stmt::new(StmtKind::ProcDef { name, params, returns, body }, tk.span.start..span_end)
+        );
+    }
+
     /// Stmt parser that parses a variable declaration including optional strong types and let/mut
     /// mutability distinction built into the parser.
     fn parse_variable_decl(&mut self) -> Result<Stmt, Error> {
@@ -197,20 +315,16 @@ impl Parser {
 
         // set mutability based on leading token keyword
         let mutable = tk.kind == TokenKind::Mut;
-
-        self.advance();
-        if self.current().kind != TokenKind::Ident {
-            panic!("Expected a name after variable decl");
-        }
+        self.assert_err(TokenKind::Ident, "expected variable name")?;
 
         let name = self.current().lexeme.to_owned();
-        let mut typ: Option<Box<Expr>> = None;
+        let mut typ: Option<Expr> = None;
 
         // get strong type after colon
         if self.expect(TokenKind::Colon) {
             self.advance(); // go to start of type expr
             if let Ok(expr) = self.parse_literal() {
-                typ = Some(Box::new(expr));
+                typ = Some(expr);
             } else {
                 return Err(
                     Error::new(
@@ -223,26 +337,16 @@ impl Parser {
             }
         }
 
-        if !self.expect(TokenKind::Equal) {
-            return Err(
-                Error::new(
-                    ErrorKind::SyntaxError,
-                    self.current().span.clone(),
-                    "expected value after variable definition",
-                    true
-                )
-            );
-        }
-
+        self.assert_err(TokenKind::Equal, "expected value after variable declaration")?;
         self.advance(); // move to beginning of value expr;
         let value = self.parse_expr()?;
         let span = tk.span.start..value.span.end;
         return Ok(
             Stmt::new(
-                StmtKind::VariableDecl {
+                StmtKind::VarDecl {
                     mutable,
                     name,
-                    value: Box::new(value),
+                    value,
                     typ,
                 },
                 span
@@ -260,10 +364,31 @@ impl Parser {
     /// * while loops
     /// * if/else
     fn parse_stmt(&mut self) -> Result<Stmt, Error> {
+        println!("Stmt started: {:#?}", self.current());
         let tk = self.current();
 
+        let stmt: Stmt;
         match tk.kind {
-            TokenKind::Let | TokenKind::Mut => self.parse_variable_decl(),
+            TokenKind::Let | TokenKind::Mut =>
+                match self.parse_variable_decl() {
+                    Ok(s) => {
+                        stmt = s;
+                    }
+                    Err(e) => {
+                        return Err(e);
+                    }
+                }
+
+            TokenKind::Def => {
+                return self.parse_proc_decl();
+            }
+
+            TokenKind::Return => {
+                self.advance(); // skip RETURN
+                let expr = self.parse_expr()?;
+                let span = expr.span.clone();
+                stmt = Stmt::new(StmtKind::Return { expr }, span);
+            }
 
             // match on expression statements
             _ => {
@@ -271,19 +396,25 @@ impl Parser {
                 match expr.kind {
                     ExprKind::Assignment { assignee: _, value: _, op: _ } => {
                         let span = expr.span.clone();
-                        return Ok(Stmt::new(StmtKind::Expression { expr: Box::new(expr) }, span));
+                        stmt = Stmt::new(StmtKind::Expr { expr }, span);
                     }
-                    _ => {}
+                    _ => {
+                        return Err(
+                            Error::new(
+                                ErrorKind::SyntaxError,
+                                tk.span.clone(),
+                                "expressions must be meaningful to exit on their own",
+                                true
+                            )
+                        );
+                    }
                 }
-                return Err(
-                    Error::new(
-                        ErrorKind::SyntaxError,
-                        tk.span.clone(),
-                        "expressions must be meaningful to exit on their own",
-                        true
-                    )
-                );
             }
         }
+
+        // consume the semicolon
+        println!("Before semicolon: {:#?}", self.current());
+        self.assert(TokenKind::Semicolon, "expected ';'");
+        return Ok(stmt);
     }
 }
