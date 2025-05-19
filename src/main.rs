@@ -5,7 +5,7 @@ use compiler::{ lexer::{ Lexer, Token }, parser };
 mod common;
 mod compiler;
 
-const PATH: &'static str = "main.ks";
+const PATH: &'static str = "main.kas";
 
 fn lex(source_code: &String) -> (Vec<Token>, ErrorBuffer) {
     let mut lexer = Lexer::new(&source_code);

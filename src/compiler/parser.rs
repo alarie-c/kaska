@@ -92,6 +92,19 @@ impl Parser {
         self.advance();
     }
 
+    fn assert_end(&mut self) {
+        if self.peek().kind == TokenKind::Semicolon
+        || self.peek().kind == TokenKind::Newline
+        || self.peek().kind == TokenKind::EOF {
+            self.advance();
+            return;
+        }
+        self.errors.push(
+            Error::new(ErrorKind::SyntaxError, self.current().span.clone(), "expected ';' or new line", true)
+        );
+        self.advance();
+    }
+
     /// Move the position one step ahead <=> pos is not at end
     fn advance(&mut self) {
         if self.source.len() <= self.pos + 1 {
@@ -111,6 +124,7 @@ impl Parser {
     /// * (eventually) arrays/matrices/quaternions/ etc.
     fn parse_literal(&mut self) -> Result<Expr, Error> {
         let tk = self.current();
+
         match tk.kind {
             // integer literal
             TokenKind::Integer => {
@@ -206,7 +220,8 @@ impl Parser {
 
     /// Top level expr parser, just returns the result of parsing any expression starting at `parse_assignment()`
     fn parse_expr(&mut self) -> Result<Expr, Error> {
-        return self.parse_assignment();
+        let e = self.parse_assignment();
+        return e;
     }
 }
 
@@ -274,12 +289,12 @@ impl Parser {
 
         // start getting the function body
         let mut body = Vec::<Stmt>::new();
-        self.assert_err(TokenKind::LCurl, "expected procedure body")?;
-        self.advance(); // skip the lcurl
+        self.assert_err(TokenKind::Colon, "expected procedure body")?;
+        self.advance(); // skip the colon
 
         // gather up the stmts
         loop {
-            if self.current().kind == TokenKind::RCurl {
+            if self.current().kind == TokenKind::End {
                 break;
             }
 
@@ -288,7 +303,7 @@ impl Parser {
                     Error::new(
                         ErrorKind::SyntaxError,
                         self.current().span.clone(),
-                        "procedure body is missing a closing '}'",
+                        "procedure body is missing a closing 'end'",
                         true
                     )
                 );
@@ -312,39 +327,31 @@ impl Parser {
     /// mutability distinction built into the parser.
     fn parse_variable_decl(&mut self) -> Result<Stmt, Error> {
         let tk = self.current();
-
-        // set mutability based on leading token keyword
-        let mutable = tk.kind == TokenKind::Mut;
-        self.assert_err(TokenKind::Ident, "expected variable name")?;
-
         let name = self.current().lexeme.to_owned();
         let mut typ: Option<Expr> = None;
+        self.advance(); // move to the colon
 
         // get strong type after colon
-        if self.expect(TokenKind::Colon) {
-            self.advance(); // go to start of type expr
-            if let Ok(expr) = self.parse_literal() {
-                typ = Some(expr);
-            } else {
-                return Err(
-                    Error::new(
-                        ErrorKind::SyntaxError,
-                        self.current().span.clone(),
-                        "expected type name",
-                        true
-                    )
-                );
+        match self.peek().kind {
+            TokenKind::Ident => {
+                self.advance(); // consume ident
+                typ = Some(self.parse_literal()?);
+                self.assert_err(TokenKind::Equal, "expected '=' after type name")?;
+            },
+            TokenKind::Equal => {
+                self.advance();
+            }
+            _ => {
+                return Err(Error::new(ErrorKind::SyntaxError, self.peek().span.clone(), "expected a type name or '=' after variable declaration", true));
             }
         }
 
-        self.assert_err(TokenKind::Equal, "expected value after variable declaration")?;
         self.advance(); // move to beginning of value expr;
         let value = self.parse_expr()?;
         let span = tk.span.start..value.span.end;
         return Ok(
             Stmt::new(
                 StmtKind::VarDecl {
-                    mutable,
                     name,
                     value,
                     typ,
@@ -364,57 +371,44 @@ impl Parser {
     /// * while loops
     /// * if/else
     fn parse_stmt(&mut self) -> Result<Stmt, Error> {
-        println!("Stmt started: {:#?}", self.current());
+        while self.current().kind == TokenKind::Newline {
+            self.advance();
+        }
+        
         let tk = self.current();
-
         let stmt: Stmt;
-        match tk.kind {
-            TokenKind::Let | TokenKind::Mut =>
-                match self.parse_variable_decl() {
-                    Ok(s) => {
-                        stmt = s;
-                    }
-                    Err(e) => {
-                        return Err(e);
-                    }
+
+        if tk.kind == TokenKind::Ident && self.peek().kind == TokenKind::Colon {
+            stmt = self.parse_variable_decl()?;
+        } else if tk.kind == TokenKind::Def {
+            stmt = self.parse_proc_decl()?;
+        } else if tk.kind == TokenKind::Return {
+            self.advance(); // consume RETURN
+            let expr = self.parse_expr()?;
+            let span = expr.span.clone();
+            stmt = Stmt::new(StmtKind::Return { expr }, span);
+        } else {
+            let expr = self.parse_expr()?;
+            match expr.kind {
+                ExprKind::Assignment { assignee: _, value: _, op: _ } => {
+                    let span = expr.span.clone();
+                    stmt = Stmt::new(StmtKind::Expr { expr }, span);
                 }
-
-            TokenKind::Def => {
-                return self.parse_proc_decl();
-            }
-
-            TokenKind::Return => {
-                self.advance(); // skip RETURN
-                let expr = self.parse_expr()?;
-                let span = expr.span.clone();
-                stmt = Stmt::new(StmtKind::Return { expr }, span);
-            }
-
-            // match on expression statements
-            _ => {
-                let expr = self.parse_expr()?;
-                match expr.kind {
-                    ExprKind::Assignment { assignee: _, value: _, op: _ } => {
-                        let span = expr.span.clone();
-                        stmt = Stmt::new(StmtKind::Expr { expr }, span);
-                    }
-                    _ => {
-                        return Err(
-                            Error::new(
-                                ErrorKind::SyntaxError,
-                                tk.span.clone(),
-                                "expressions must be meaningful to exit on their own",
-                                true
-                            )
-                        );
-                    }
+                _ => {
+                    return Err(
+                        Error::new(
+                            ErrorKind::SyntaxError,
+                            tk.span.clone(),
+                            "expressions must be meaningful to exist on their own",
+                            true
+                        )
+                    );
                 }
-            }
+            } 
         }
 
         // consume the semicolon
-        println!("Before semicolon: {:#?}", self.current());
-        self.assert(TokenKind::Semicolon, "expected ';'");
+        self.assert_end();
         return Ok(stmt);
     }
 }

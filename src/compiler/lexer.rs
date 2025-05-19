@@ -83,9 +83,11 @@ pub enum TokenKind {
     // other operators/symbols
     RArrow,
     Colon,
+    ColonEqual,
     Semicolon,
     Comma,
     Dot,
+    Newline,
 
     // literals
     True,
@@ -98,8 +100,6 @@ pub enum TokenKind {
     // keywords
     Def,
     Return,
-    Let,
-    Mut,
     If,
     Else,
     For,
@@ -107,6 +107,7 @@ pub enum TokenKind {
     Break,
     Class,
     Enum,
+    End,
 }
 
 impl TokenKind {
@@ -116,8 +117,6 @@ impl TokenKind {
         match lexeme.as_str() {
             "def" => TokenKind::Def,
             "return" => TokenKind::Return,
-            "let" => TokenKind::Let,
-            "mut" => TokenKind::Mut,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
             "if" => TokenKind::If,
@@ -127,6 +126,7 @@ impl TokenKind {
             "break" => TokenKind::Break,
             "class" => TokenKind::Class,
             "enum" => TokenKind::Enum,
+            "end" => TokenKind::End,
             _ => TokenKind::Ident,
         }
     }
@@ -157,7 +157,8 @@ impl<'a> Lexer<'a> {
 
             match ch {
                 // whitespace ignore
-                ' ' | '\t' | '\r' | '\n' => {}
+                ' ' | '\t' | '\r' => {}
+                '\n' => tokens.push(Token::new(TokenKind::Newline, start..start, "\\n")),
 
                 // grouping operators
                 '(' => tokens.push(Token::new(TokenKind::LParen, start..start, "(")),
@@ -244,6 +245,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     tokens.push(Token::new(TokenKind::AmprsndAmprsnd, start..self.pos, "&"));
                 }
+
 
                 ':' => tokens.push(Token::new(TokenKind::Colon, start..start, ":")),
                 ';' => tokens.push(Token::new(TokenKind::Semicolon, start..start, ";")),

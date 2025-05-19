@@ -78,7 +78,6 @@ impl Stmt {
 #[derive(Debug)]
 pub enum StmtKind {
     VarDecl {
-        mutable: bool,
         name: String,
         value: Expr,
         typ: Option<Expr>,
