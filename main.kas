@@ -1,15 +1,1 @@
-def many(
-    a: int,
-    b: int,
-    c: string,
-    d: bool,
-    e: Array
-) -> int:
-    return 5
-end
-
-many(5,
-10,
-15,
-20
-)
+y = add(3, 2, 3 4)

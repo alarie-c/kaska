@@ -124,6 +124,21 @@ impl Parser {
             self.advance();
         }
     }
+
+    fn catch(&mut self, stmt: Result<Stmt, Error>) -> Result<Stmt, Error> {
+        match stmt {
+            Ok(s) => return Ok(s),
+            Err(e) => {
+                // skip to the end of the line
+                let mut tk = self.current();
+                while tk.kind != TokenKind::Semicolon || tk.kind != TokenKind::Newline {
+                    self.advance();
+                    tk = self.current();
+                }
+                return Err(e);
+            }
+        }
+    }
 }
 
 impl Parser {
@@ -431,9 +446,11 @@ impl Parser {
         let stmt: Stmt;
 
         if tk.kind == TokenKind::Ident && self.peek().kind == TokenKind::Colon {
-            stmt = self.parse_variable_decl()?;
+            let s = self.parse_variable_decl();
+            stmt = self.catch(s)?;
         } else if tk.kind == TokenKind::Def {
-            stmt = self.parse_proc_decl()?;
+            let s = self.parse_proc_decl();
+            stmt = self.catch(s)?;
         } else if tk.kind == TokenKind::Return {
             self.advance(); // consume RETURN
             let expr = self.parse_expr()?;

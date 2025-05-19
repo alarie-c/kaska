@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use super::span::Span;
+use super::span::{formatted_content, line_number, Span};
 
 pub type ErrorBuffer = Vec<Error>;
 
@@ -37,6 +37,12 @@ impl Error {
             abort,
         }
     }
+
+    // pub fn print(&self, source: &String) {
+    //     let ln = line_number(&self.span, source);
+    //     let f = formatted_content(&self.span, &self.span, source);
+    //     println!("{:?}", f);
+    // }
 }
 
 #[derive(Debug)]

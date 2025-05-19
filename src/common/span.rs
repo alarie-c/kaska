@@ -1,9 +1,8 @@
 use std::ops::Range;
-
 pub type Span = Range<usize>;
 
 pub fn line_number(span: &Span, source: &String) -> usize {
-    return source[..span.start].chars().filter(|&c| c == '\n').count();
+    return source[..span.start].chars().filter(|&c| c == '\n').count() + 1;
 }
 
 pub fn formatted_content(span: &Span, underline: &Span, source: &String) -> Option<String> {
@@ -11,13 +10,13 @@ pub fn formatted_content(span: &Span, underline: &Span, source: &String) -> Opti
         return None;
     }
 
-    let line_start = source[..span.start]
+    let line_start = source[0..span.start]
         .rfind('\n')
-        .map_or(0, |pos| pos + 1);
+        .map_or(0, |n| span.start - n);
 
-    let line_end = source[span.end..]
+    let line_end = source[span.end..source.len()]
         .find('\n')
-        .map_or(source.len(), |pos| span.end + pos + 1);
+        .map_or(source.len(), |n| span.end + 1 + n);
 
     let mut text: Vec<String> = vec![String::new()];
     let mut carets: Vec<String> = vec![String::new()];
@@ -33,7 +32,7 @@ pub fn formatted_content(span: &Span, underline: &Span, source: &String) -> Opti
         
         if c == '\n' {
             j += 1;
-            continue;
+            continue 'builder;
         }
         
         if underline.contains(&i) {
