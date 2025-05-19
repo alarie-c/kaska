@@ -35,7 +35,7 @@ pub enum ExprKind {
     // compound expressions
     Call {
         callee: Box<Expr>,
-        args: Vec<Box<Expr>>,
+        args: Vec<Expr>,
     },
     Assignment {
         assignee: Box<Expr>,

@@ -1,8 +1,15 @@
-def add_five(x: int) -> int:
-    return x + 5
+def many(
+    a: int,
+    b: int,
+    c: string,
+    d: bool,
+    e: Array
+) -> int:
+    return 5
 end
 
-def __main__():
-    y := 5 + 10
-    return y
-end
+many(5,
+10,
+15,
+20
+)

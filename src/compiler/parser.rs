@@ -112,6 +112,18 @@ impl Parser {
         }
         self.pos += 1;
     }
+
+    fn skip_newlines(&mut self) {
+        while self.current().kind == TokenKind::Newline {
+            self.advance();
+        }
+    }
+
+    fn skip_next_newlines(&mut self) {
+        while self.peek().kind == TokenKind::Newline {
+            self.advance();
+        }
+    }
 }
 
 impl Parser {
@@ -176,16 +188,53 @@ impl Parser {
             Error::new(
                 ErrorKind::SyntaxError,
                 tk.span.clone(),
-                "expected a primary expression",
+                format!("expected expression, found '{}'", self.current().lexeme).as_str(),
                 true
             )
         );
     }
 
+    fn parse_call(&mut self) -> Result<Expr, Error> {
+        let mut expr = self.parse_literal()?;
+
+        if self.expect(TokenKind::LParen) {
+            self.advance();
+            let mut args = Vec::<Expr>::new();
+            let start = expr.span.start;
+            
+            loop {
+                self.skip_newlines();
+
+                match self.parse_expr() {
+                    Ok(expr) => args.push(expr),
+                    Err(e) => {
+                        self.errors.push(e);
+                        continue;
+                    }
+                }
+
+                self.skip_next_newlines();
+                if self.expect(TokenKind::Comma) {
+                    self.advance();
+                    continue;
+                } else if self.expect(TokenKind::RParen) {
+                    break;
+                } else {
+                    return Err(Error::new(ErrorKind::SyntaxError, self.peek().span.clone(), "expected ',' or ')'", true));
+                }
+            }
+
+            let end = self.current().span.end;
+            expr = Expr::new(ExprKind::Call { callee: Box::new(expr), args }, start..end);
+        }
+
+        return Ok(expr);
+    }
+
     /// Looks for literally any binary operator possible and constructs a binary expression
     /// out of it and the expressions surrounding it.
     fn parse_binary(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.parse_literal()?;
+        let mut expr = self.parse_call()?;
 
         if let Some(op) = Operator::expect_binary(&self.peek().kind) {
             self.advance(); // consume the operator
@@ -244,6 +293,8 @@ impl Parser {
         if self.current().kind != TokenKind::RParen {
             self.pos -= 1;
             loop {
+                self.skip_next_newlines();
+
                 // name
                 self.assert(TokenKind::Ident, "expected parameter name");
                 let span_start = self.current().span.start;
@@ -267,6 +318,8 @@ impl Parser {
                 }
             }
         }
+        
+        self.skip_newlines();
 
         // close out the parameters
         if self.current().kind != TokenKind::RParen {
@@ -293,7 +346,7 @@ impl Parser {
         self.advance(); // skip the colon
 
         // gather up the stmts
-        loop {
+        loop {            
             if self.current().kind == TokenKind::End {
                 break;
             }
@@ -314,6 +367,7 @@ impl Parser {
                 Ok(stmt) => body.push(stmt),
                 Err(e) => self.errors.push(e),
             }
+
             self.advance();
         }
 
@@ -371,9 +425,7 @@ impl Parser {
     /// * while loops
     /// * if/else
     fn parse_stmt(&mut self) -> Result<Stmt, Error> {
-        while self.current().kind == TokenKind::Newline {
-            self.advance();
-        }
+        self.skip_newlines();
         
         let tk = self.current();
         let stmt: Stmt;
@@ -393,6 +445,10 @@ impl Parser {
                 ExprKind::Assignment { assignee: _, value: _, op: _ } => {
                     let span = expr.span.clone();
                     stmt = Stmt::new(StmtKind::Expr { expr }, span);
+                }
+                ExprKind::Call { callee: _, args: _ } => {
+                    let span = expr.span.clone();
+                    stmt = Stmt::new(StmtKind::Expr { expr }, span); 
                 }
                 _ => {
                     return Err(
