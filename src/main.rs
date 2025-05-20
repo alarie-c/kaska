@@ -1,6 +1,6 @@
 use std::fs;
 use common::errors::{ check_errs_for_abort, ErrorBuffer };
-use compiler::lexer::{ Lexer, Token };
+use compiler::{ ast::Stmt, lexer::{ Lexer, Token }, parser::Parser };
 
 mod common;
 mod compiler;
@@ -12,30 +12,26 @@ fn lex(source_code: &String) -> (Vec<Token>, ErrorBuffer) {
     return lexer.lex();
 }
 
-// pub fn parse(source: Vec<Token>) -> (AST, ErrorBuffer) {
-//     let mut parser = Parser::new(source);
-//     let ast = parser.parse();
-
-//     let mut errors: ErrorBuffer = vec![];
-//     let _ = std::mem::replace(&mut errors, parser.errors);
-//     return (ast, errors);
-// }
+pub fn parse(source: Vec<Token>) -> (Vec<Stmt>, ErrorBuffer) {
+    let mut parser = Parser::new(source);
+    return parser.parse();
+}
 
 fn main() {
     let source_code = fs::read_to_string(&PATH).expect("There was an error reading the file!");
 
     // tokenize and debug
-    let (tokens, _) = lex(&source_code);
-    println!("[[ TOKENS ]{:#?}", tokens);
+    let (tokens, lex_errs) = lex(&source_code);
+    println!("Tokens:\n{:#?}", tokens);
 
-    // // parse and debug
-    // let (ast, parse_errs) = parse(tokens);
-    // println!("[[ AST ]{:#?}", ast);
+    // parse and debug
+    let (ast, parse_errs) = parse(tokens);
+    println!("AST:\n{:#?}", ast);
 
-    // // print errors
-    // print!("[[ ERRORS ]");
-    // print!("{:#?}", lex_errs);
-    // print!("{:#?}\n", parse_errs);
+    // print errors
+    println!("Errors:");
+    println!("{:#?}", lex_errs);
+    println!("{:#?}", parse_errs);
 
     // // determine testing error code from errors
     // let code: i32 = match check_errs_for_abort(&lex_errs) || check_errs_for_abort(&parse_errs) {

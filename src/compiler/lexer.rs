@@ -1,4 +1,4 @@
-use crate::{common::{ errors::{ Error, ErrorBuffer, ErrorKind }, span::Span }, throw};
+use crate::{ common::{ errors::{ Error, ErrorBuffer, ErrorKind }, span::Span }, throw };
 
 #[derive(Debug)]
 pub struct Token {
@@ -282,7 +282,11 @@ impl<'a> Lexer<'a> {
                             // uh oh cherio
                             None => {
                                 errors.push(
-                                    throw!(SyntaxError, start..self.pos, "string literal is missing a closing '\"'")
+                                    throw!(
+                                        SyntaxError,
+                                        start..self.pos,
+                                        "string literal is missing a closing '\"'"
+                                    )
                                 );
                                 break;
                             }

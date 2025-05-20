@@ -70,11 +70,17 @@ pub enum ExprKind {
 }
 
 #[macro_export]
-// macro_rules! expr {
-//     (Integer, $value:expr, $span:expr) => {
-//         Expr::new(ExprKind::Integer { value: $value }, $span)
-//     };
-// }
+macro_rules! expr {
+    (Call, $callee:expr, $args:expr, $span:expr) => {
+        Expr::new(ExprKind::Call { callee: Box::new($callee), args: $args }, $span)
+    };
+    (Binary, $lhs:expr, $rhs:expr, $op:expr, $span:expr) => {
+        Expr::new(ExprKind::Binary { lhs: Box::new($lhs), rhs: Box::new($rhs), op: $op }, $span)
+    };
+    (Assignment, $assignee:expr, $value:expr, $op:expr, $span:expr) => {
+        Expr::new(ExprKind::Assignment { assignee: Box::new($assignee), value: Box::new($value), op: $op }, $span)
+    };
+}
 
 // ----------------------------------------------------------------- \\
 // STATEMENTS
@@ -105,7 +111,14 @@ pub enum StmtKind {
         ret: Option<Expr>,
         params: Vec<Expr>,
         body: Vec<Stmt>,
-    }
+    },
+}
+
+#[macro_export]
+macro_rules! stmt {
+    (Variable, $name:expr, $typ:expr, $value:expr, $span:expr) => {
+        Stmt::new(StmtKind::Variable { name: $name, typ: $typ, value: $value }, $span)
+    };
 }
 
 // ----------------------------------------------------------------- \\

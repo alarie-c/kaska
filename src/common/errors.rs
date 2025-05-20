@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use super::span::{formatted_content, line_number, Span};
+use super::span::{ formatted_content, line_number, Span };
 
 pub type ErrorBuffer = Vec<Error>;
 
