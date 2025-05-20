@@ -26,14 +26,14 @@ impl Token {
         }
     }
 
-    /// Self explanatory, Rust won't let me just implement the trait
-    pub fn copy(&self) -> Token {
-        Token {
-            kind: self.kind,
-            span: self.span.clone(),
-            lexeme: self.lexeme.to_owned(),
-        }
-    }
+    // /// Self explanatory, Rust won't let me just implement the trait
+    // pub fn copy(&self) -> Token {
+    //     Token {
+    //         kind: self.kind,
+    //         span: self.span.clone(),
+    //         lexeme: self.lexeme.to_owned(),
+    //     }
+    // }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -63,6 +63,7 @@ pub enum TokenKind {
     SlashSlash,
     SlashEqual,
     SlashSlashEqual,
+    Modulo,
 
     // comparison operators
     Less,
@@ -83,11 +84,11 @@ pub enum TokenKind {
     // other operators/symbols
     RArrow,
     Colon,
-    ColonEqual,
     Semicolon,
     Comma,
     Dot,
     Newline,
+    Sigil,
 
     // literals
     True,
@@ -98,7 +99,8 @@ pub enum TokenKind {
     Float,
 
     // keywords
-    Def,
+    Let,
+    Function,
     Return,
     If,
     Else,
@@ -108,6 +110,9 @@ pub enum TokenKind {
     Class,
     Enum,
     End,
+    Where,
+    Is,
+    Not,
 }
 
 impl TokenKind {
@@ -115,7 +120,8 @@ impl TokenKind {
     /// identifier in the case that the lexeme has no token kind.
     pub fn from_lexeme(lexeme: &String) -> TokenKind {
         match lexeme.as_str() {
-            "def" => TokenKind::Def,
+            "let" => TokenKind::Let,
+            "function" => TokenKind::Function,
             "return" => TokenKind::Return,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
@@ -127,6 +133,9 @@ impl TokenKind {
             "class" => TokenKind::Class,
             "enum" => TokenKind::Enum,
             "end" => TokenKind::End,
+            "is" => TokenKind::Is,
+            "not" => TokenKind::Not,
+            "where" => TokenKind::Where,
             _ => TokenKind::Ident,
         }
     }
@@ -246,11 +255,12 @@ impl<'a> Lexer<'a> {
                     tokens.push(Token::new(TokenKind::AmprsndAmprsnd, start..self.pos, "&"));
                 }
 
-
+                '%' => tokens.push(Token::new(TokenKind::Modulo, start..start, "%")),
                 ':' => tokens.push(Token::new(TokenKind::Colon, start..start, ":")),
                 ';' => tokens.push(Token::new(TokenKind::Semicolon, start..start, ";")),
                 ',' => tokens.push(Token::new(TokenKind::Comma, start..start, ",")),
                 '.' => tokens.push(Token::new(TokenKind::Dot, start..start, ".")),
+                '$' => tokens.push(Token::new(TokenKind::Sigil, start..start, "$")),
 
                 '"' => {
                     let mut lexeme = String::new();
@@ -260,7 +270,7 @@ impl<'a> Lexer<'a> {
                         match self.peek() {
                             // if a valid cahracter comes next
                             Some(next_ch) => if next_ch == '\\' {
-                                panic!("Escape sequences not support yet brochacho... </3");
+                                unimplemented!("Escape sequences not support yet brochacho... </3");
                             } else if next_ch == '"' {
                                 self.advance();
                                 break 'string;
@@ -347,6 +357,14 @@ impl<'a> Lexer<'a> {
                         lexeme.push(next_ch);
                     }
                     tokens.push(Token { kind, span: start..self.pos, lexeme });
+                }
+                '#' => {
+                    while let Some(next_ch) = self.peek() {
+                        self.advance();
+                        if next_ch == '\n' {
+                            break;
+                        }
+                    }
                 }
                 _ =>
                     errors.push(

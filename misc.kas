@@ -1,0 +1,106 @@
+# ------------------------------------------------ #
+# Parametric Types in Functions
+# ------------------------------------------------ #
+
+function scale(x: T) where {T is Integer} -> bool
+    return x % 2 == 0
+end
+
+# ------------------------------------------------ #
+# Parametric Types in Classes + Builtins
+# ------------------------------------------------ #
+
+class Point{T} where {T is Integer}
+    x: T
+    y: T
+
+    function Point(self, x, y: T) -> Point{T}
+        let self.x = x
+        let self.y = y
+        return self
+    end
+
+    function __add__(self, other: Point{T}) -> Point{T}
+        let new_x = self.x + other.x
+        let new_y = self.y + other.y
+        return Point(new_x, new_y)
+    end
+
+    function __str__(self) -> str
+        return "(${self.x}, ${self.y})"
+    end
+end
+
+# ------------------------------------------------ #
+# Using nullable types
+# ------------------------------------------------ #
+
+function number_from_str(input: str) -> int?
+    if str == "0" then
+        return 0
+    else if str == "1" then
+        return 1
+    else
+        return None
+    end
+end
+
+let input_a = "1"
+let input_b = "3"
+let A = number_from_str(input_a)
+let B = number_from_str(input_b)
+
+if B is None then
+    print("B is None")
+end
+
+if A is not None then
+    print("A is not None")
+end
+
+if A then
+    print(A)
+end
+
+# ------------------------------------------------ #
+# Visibility Specifiers
+# ------------------------------------------------ #
+
+# this is visible from other files
+pub class Public end
+
+# this is not
+class Private end
+
+# this is visible from other files
+pub function public() end
+
+# this is not
+function private() end
+
+# ------------------------------------------------ #
+# Import Modules
+# ------------------------------------------------ #
+
+from Module import Function end
+
+from Module import
+    thing1,
+    thing2,
+    thing3,
+end
+
+import Module as m
+from Module import * end
+
+# ------------------------------------------------ #
+# Compiler Directions
+# ------------------------------------------------ #
+
+inline function add_five(a: T) where {T is Number} -> T
+    return a + 5
+end
+
+static function add_five(a: T) where {T is Number} -> T
+    return a + 5
+end
