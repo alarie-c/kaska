@@ -3,6 +3,16 @@ use super::span::{formatted_content, line_number, Span};
 
 pub type ErrorBuffer = Vec<Error>;
 
+#[macro_export]
+macro_rules! throw {
+    ($kind:ident, $span:expr, $msg:literal) => {
+        Error::new(ErrorKind::$kind, $span, $msg.to_string(), true)
+    };
+    ($kind:ident, $span:expr, $msg:expr) => {
+        Error::new(ErrorKind::$kind, $span, $msg, true)
+    };
+}
+
 /// Takes an error buffer and returns true of one or more of the errors
 /// will abort compilation
 pub fn check_errs_for_abort(buffer: &ErrorBuffer) -> bool {
@@ -29,11 +39,11 @@ pub struct Error {
 
 impl Error {
     /// Quick way to create a new error, default constructor
-    pub fn new(kind: ErrorKind, span: Span, msg: &str, abort: bool) -> Error {
+    pub fn new(kind: ErrorKind, span: Span, msg: String, abort: bool) -> Error {
         Error {
             kind,
             span,
-            msg: msg.to_string(),
+            msg,
             abort,
         }
     }

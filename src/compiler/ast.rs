@@ -1,6 +1,20 @@
 use crate::common::span::Span;
 use super::lexer::TokenKind;
 
+/// An abstraction from Expr::new in case there's anything other logic I want to add here later
+pub(in crate::compiler) fn expr(kind: ExprKind, span: Span) -> Expr {
+    return Expr::new(kind, span);
+}
+
+/// An abstraction from Stmt::new in case there's anything other logic I want to add here later
+pub(in crate::compiler) fn stmt(kind: StmtKind, span: Span) -> Stmt {
+    return Stmt::new(kind, span);
+}
+
+// ----------------------------------------------------------------- \\
+// EXPRESSIONS
+// ----------------------------------------------------------------- \\
+
 #[derive(Debug)]
 pub struct Expr {
     pub kind: ExprKind,
@@ -53,15 +67,18 @@ pub enum ExprKind {
         rhs: Box<Expr>,
         op: Operator,
     },
-    Postfix {
-        op: Operator,
-        lhs: Box<Expr>,
-    },
-    Infix {
-        op: Operator,
-        rhs: Box<Expr>,
-    },
 }
+
+#[macro_export]
+// macro_rules! expr {
+//     (Integer, $value:expr, $span:expr) => {
+//         Expr::new(ExprKind::Integer { value: $value }, $span)
+//     };
+// }
+
+// ----------------------------------------------------------------- \\
+// STATEMENTS
+// ----------------------------------------------------------------- \\
 
 #[derive(Debug)]
 pub struct Stmt {
@@ -77,27 +94,23 @@ impl Stmt {
 
 #[derive(Debug)]
 pub enum StmtKind {
-    VarDecl {
+    Variable {
         name: String,
-        value: Expr,
         typ: Option<Expr>,
+        value: Expr,
     },
 
-    ProcDef {
+    Function {
         name: String,
+        ret: Option<Expr>,
         params: Vec<Expr>,
-        returns: Option<Expr>,
         body: Vec<Stmt>,
-    },
-
-    Expr {
-        expr: Expr,
-    },
-
-    Return {
-        expr: Expr,
-    },
+    }
 }
+
+// ----------------------------------------------------------------- \\
+// OPERATORS
+// ----------------------------------------------------------------- \\
 
 #[derive(Debug, PartialEq)]
 pub enum Operator {
@@ -135,7 +148,7 @@ pub enum Operator {
 }
 
 impl Operator {
-    pub(in crate::compiler) fn expect_binary(tk: &TokenKind) -> Option<Operator> {
+    pub(in crate::compiler) fn binary(tk: &TokenKind) -> Option<Operator> {
         match tk {
             TokenKind::Plus => Some(Operator::Add),
             TokenKind::Minus => Some(Operator::Sub),
@@ -160,7 +173,7 @@ impl Operator {
         }
     }
 
-    pub(in crate::compiler) fn expect_assign(tk: &TokenKind) -> Option<Operator> {
+    pub(in crate::compiler) fn assignment(tk: &TokenKind) -> Option<Operator> {
         match tk {
             TokenKind::Equal => Some(Operator::Eq),
             TokenKind::PlusEqual => Some(Operator::AddEq),
