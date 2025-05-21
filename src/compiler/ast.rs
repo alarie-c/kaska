@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::common::span::Span;
 use super::lexer::TokenKind;
 
@@ -57,6 +59,7 @@ pub enum ExprKind {
         rhs: Box<Expr>,
         op: Operator,
     },
+
 }
 
 #[macro_export]
@@ -192,6 +195,37 @@ impl Operator {
             TokenKind::StarStarEqual => Some(Operator::ExpEq),
             TokenKind::SlashSlashEqual => Some(Operator::FloorEq),
             _ => None,
+        }
+    }
+}
+
+impl Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::Add => write!(f, "+"),
+            Operator::Sub => write!(f, "-"),
+            Operator::Mul => write!(f, "*"),
+            Operator::Div => write!(f, "/"),
+            Operator::Exp => write!(f, "**"),
+            Operator::Floor => write!(f, "//"),
+            Operator::Eq => write!(f, "="),
+            Operator::AddEq => write!(f, "+="),
+            Operator::SubEq => write!(f, "-="),
+            Operator::MulEq => write!(f, "*="),
+            Operator::DivEq => write!(f, "/="),
+            Operator::ExpEq => write!(f, "**="),
+            Operator::FloorEq => write!(f, "//="),
+            Operator::BitAnd => write!(f, "&"),
+            Operator::LogAnd => write!(f, "and"),
+            Operator::BitOr => write!(f, "|"),
+            Operator::LogOr => write!(f, "or"),
+            Operator::Lt => write!(f, "<"),
+            Operator::LtEq => write!(f, "<="),
+            Operator::Mt => write!(f, ">"),
+            Operator::MtEq => write!(f, ">="),
+            Operator::Bang => write!(f, "!"),
+            Operator::BangEq => write!(f, "!="),
+            Operator::EqEq => write!(f, "=="),
         }
     }
 }
