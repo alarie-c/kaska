@@ -1,16 +1,6 @@
 use crate::common::span::Span;
 use super::lexer::TokenKind;
 
-/// An abstraction from Expr::new in case there's anything other logic I want to add here later
-pub(in crate::compiler) fn expr(kind: ExprKind, span: Span) -> Expr {
-    return Expr::new(kind, span);
-}
-
-/// An abstraction from Stmt::new in case there's anything other logic I want to add here later
-pub(in crate::compiler) fn stmt(kind: StmtKind, span: Span) -> Stmt {
-    return Stmt::new(kind, span);
-}
-
 // ----------------------------------------------------------------- \\
 // EXPRESSIONS
 // ----------------------------------------------------------------- \\
@@ -80,6 +70,9 @@ macro_rules! expr {
     (Assignment, $assignee:expr, $value:expr, $op:expr, $span:expr) => {
         Expr::new(ExprKind::Assignment { assignee: Box::new($assignee), value: Box::new($value), op: $op }, $span)
     };
+    (Parameter, $name:expr, $ty:expr, $span:expr) => {
+        Expr::new(ExprKind::Parameter { name: $name, ty: Box::new($ty) }, $span)
+    };
 }
 
 // ----------------------------------------------------------------- \\
@@ -118,6 +111,9 @@ pub enum StmtKind {
 macro_rules! stmt {
     (Variable, $name:expr, $typ:expr, $value:expr, $span:expr) => {
         Stmt::new(StmtKind::Variable { name: $name, typ: $typ, value: $value }, $span)
+    };
+    (Function, $name:expr, $ret:expr, $params:expr, $body:expr, $span:expr) => {
+        Stmt::new(StmtKind::Function { name: $name, ret: $ret, params: $params, body: $body }, $span)
     };
 }
 
