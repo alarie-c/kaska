@@ -89,6 +89,7 @@ pub enum TokenKind {
     Dot,
     Newline,
     Sigil,
+    Ellipsis,
 
     // literals
     True,
@@ -113,6 +114,12 @@ pub enum TokenKind {
     Where,
     Is,
     Not,
+    Import,
+    From,
+    As,
+    Inline,
+    Pub,
+    In,
 }
 
 impl TokenKind {
@@ -136,6 +143,12 @@ impl TokenKind {
             "is" => TokenKind::Is,
             "not" => TokenKind::Not,
             "where" => TokenKind::Where,
+            "import" => TokenKind::Import,
+            "from" => TokenKind::From,
+            "as" => TokenKind::As,
+            "inline" => TokenKind::Inline,
+            "pub" => TokenKind::Pub,
+            "in" => TokenKind::In,
             _ => TokenKind::Ident,
         }
     }
@@ -176,6 +189,18 @@ impl<'a> Lexer<'a> {
                 ']' => tokens.push(Token::new(TokenKind::RBrac, start..start, "]")),
                 '{' => tokens.push(Token::new(TokenKind::LCurl, start..start, "{")),
                 '}' => tokens.push(Token::new(TokenKind::RCurl, start..start, "}")),
+
+                // tokenize ellipsis
+                '.' => if self.expect('.') {
+                    if self.expect('.') {
+                        tokens.push(Token::new(TokenKind::Ellipsis, start..self.pos, "..."));
+                    } else {
+                        self.pos -= 1; // go back one
+                        tokens.push(Token::new(TokenKind::Dot, start..self.pos, "."));
+                    }
+                } else {
+                    tokens.push(Token::new(TokenKind::Dot, start..self.pos, "."));
+                }
 
                 // double wide arithmetic operators
                 '+' => if self.expect('+') {
@@ -259,7 +284,6 @@ impl<'a> Lexer<'a> {
                 ':' => tokens.push(Token::new(TokenKind::Colon, start..start, ":")),
                 ';' => tokens.push(Token::new(TokenKind::Semicolon, start..start, ";")),
                 ',' => tokens.push(Token::new(TokenKind::Comma, start..start, ",")),
-                '.' => tokens.push(Token::new(TokenKind::Dot, start..start, ".")),
                 '$' => tokens.push(Token::new(TokenKind::Sigil, start..start, "$")),
 
                 '"' => {

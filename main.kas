@@ -1,3 +1,10 @@
-function add() -> int
-    let x = 10 + add(5)
-end
+....
+..
+.
+
+import
+from
+as
+inline
+pub
+in
