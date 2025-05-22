@@ -57,23 +57,28 @@ impl Error {
 
 #[derive(Debug)]
 pub enum ErrorKind {
+    // Errors
     IllegalCharacter,
     SyntaxError,
     ParseError,
     TypeMismatch,
     AssignToConstant,
     UnknownIdentifier,
+
+    // Warnings
+    UnusedVariable,
 }
 
 impl Display for ErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorKind::IllegalCharacter => write!(f, "found illegal character"),
-            ErrorKind::SyntaxError => write!(f, "syntax error"),
-            ErrorKind::ParseError => write!(f, "parse error"),
-            ErrorKind::TypeMismatch => write!(f, "type mistmatch"),
-            ErrorKind::AssignToConstant => write!(f, "tried to assign to a constant"),
-            ErrorKind::UnknownIdentifier => write!(f, "unknown identifier"),
+            Self::IllegalCharacter => write!(f, "found illegal character"),
+            Self::SyntaxError => write!(f, "syntax error"),
+            Self::ParseError => write!(f, "parse error"),
+            Self::TypeMismatch => write!(f, "type mistmatch"),
+            Self::AssignToConstant => write!(f, "tried to assign to a constant"),
+            Self::UnknownIdentifier => write!(f, "unknown identifier"),
+            Self::UnusedVariable => write!(f, "unused variable"),
         }
     }
 }

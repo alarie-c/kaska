@@ -1,158 +1,6 @@
-use crate::{ common::{ errors::{ Error, ErrorBuffer, ErrorKind }, span::Span }, throw };
+use crate::{ common::{ errors::{ Error, ErrorBuffer, ErrorKind } }, throw };
 
-#[derive(Debug)]
-pub struct Token {
-    pub kind: TokenKind,
-    pub span: Span,
-    pub lexeme: String,
-}
-
-impl Token {
-    /// A little helper function to make token construction a little easier
-    fn new(kind: TokenKind, span: Span, lexeme: &str) -> Token {
-        return Token {
-            kind,
-            span,
-            lexeme: lexeme.to_string(),
-        };
-    }
-
-    /// Just creates an EOF token from the span given
-    pub fn eof(span: Span) -> Token {
-        Token {
-            kind: TokenKind::EOF,
-            span,
-            lexeme: "<EOF>".to_string(),
-        }
-    }
-
-    // /// Self explanatory, Rust won't let me just implement the trait
-    // pub fn copy(&self) -> Token {
-    //     Token {
-    //         kind: self.kind,
-    //         span: self.span.clone(),
-    //         lexeme: self.lexeme.to_owned(),
-    //     }
-    // }
-}
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum TokenKind {
-    EOF = 0,
-
-    // grouping operators
-    LParen,
-    RParen,
-    LCurl,
-    RCurl,
-    LBrac,
-    RBrac,
-
-    // arithmetic operators
-    Plus,
-    PlusPlus,
-    PlusEqual,
-    Minus,
-    MinusMinus,
-    MinusEqual,
-    Star,
-    StarStar,
-    StarEqual,
-    StarStarEqual,
-    Slash,
-    SlashSlash,
-    SlashEqual,
-    SlashSlashEqual,
-    Modulo,
-
-    // comparison operators
-    Less,
-    LessEqual,
-    More,
-    MoreEqual,
-    Equal,
-    EqualEqual,
-    Bang,
-    BangEqual,
-
-    // logical operators
-    Pipe,
-    PipePipe,
-    Amprsnd,
-    AmprsndAmprsnd,
-
-    // other operators/symbols
-    RArrow,
-    Colon,
-    Semicolon,
-    Comma,
-    Dot,
-    Newline,
-    Sigil,
-    Ellipsis,
-
-    // literals
-    True,
-    False,
-    Ident,
-    String,
-    Integer,
-    Float,
-
-    // keywords
-    Let,
-    Function,
-    Return,
-    If,
-    Else,
-    For,
-    While,
-    Break,
-    Class,
-    Enum,
-    End,
-    Where,
-    Is,
-    Not,
-    Import,
-    From,
-    As,
-    Inline,
-    Pub,
-    In,
-}
-
-impl TokenKind {
-    /// Takes a lexeme and eithe returns the keyword corresponding with the lexeme or
-    /// identifier in the case that the lexeme has no token kind.
-    pub fn from_lexeme(lexeme: &String) -> TokenKind {
-        match lexeme.as_str() {
-            "let" => TokenKind::Let,
-            "function" => TokenKind::Function,
-            "return" => TokenKind::Return,
-            "true" => TokenKind::True,
-            "false" => TokenKind::False,
-            "if" => TokenKind::If,
-            "else" => TokenKind::Else,
-            "for" => TokenKind::For,
-            "while" => TokenKind::While,
-            "break" => TokenKind::Break,
-            "class" => TokenKind::Class,
-            "enum" => TokenKind::Enum,
-            "end" => TokenKind::End,
-            "is" => TokenKind::Is,
-            "not" => TokenKind::Not,
-            "where" => TokenKind::Where,
-            "import" => TokenKind::Import,
-            "from" => TokenKind::From,
-            "as" => TokenKind::As,
-            "inline" => TokenKind::Inline,
-            "pub" => TokenKind::Pub,
-            "in" => TokenKind::In,
-            _ => TokenKind::Ident,
-        }
-    }
-}
+use super::token::{ Tk, Token };
 
 pub struct Lexer<'a> {
     source: &'a String,
@@ -180,111 +28,111 @@ impl<'a> Lexer<'a> {
             match ch {
                 // whitespace ignore
                 ' ' | '\t' | '\r' => {}
-                '\n' => tokens.push(Token::new(TokenKind::Newline, start..start, "\\n")),
+                '\n' => tokens.push(Token::new(Tk::Newline, start..start, "\\n")),
 
                 // grouping operators
-                '(' => tokens.push(Token::new(TokenKind::LParen, start..start, "(")),
-                ')' => tokens.push(Token::new(TokenKind::RParen, start..start, ")")),
-                '[' => tokens.push(Token::new(TokenKind::LBrac, start..start, "[")),
-                ']' => tokens.push(Token::new(TokenKind::RBrac, start..start, "]")),
-                '{' => tokens.push(Token::new(TokenKind::LCurl, start..start, "{")),
-                '}' => tokens.push(Token::new(TokenKind::RCurl, start..start, "}")),
+                '(' => tokens.push(Token::new(Tk::LParen, start..start, "(")),
+                ')' => tokens.push(Token::new(Tk::RParen, start..start, ")")),
+                '[' => tokens.push(Token::new(Tk::LBrac, start..start, "[")),
+                ']' => tokens.push(Token::new(Tk::RBrac, start..start, "]")),
+                '{' => tokens.push(Token::new(Tk::LCurl, start..start, "{")),
+                '}' => tokens.push(Token::new(Tk::RCurl, start..start, "}")),
 
                 // tokenize ellipsis
                 '.' => if self.expect('.') {
                     if self.expect('.') {
-                        tokens.push(Token::new(TokenKind::Ellipsis, start..self.pos, "..."));
+                        tokens.push(Token::new(Tk::Ellipsis, start..self.pos, "..."));
                     } else {
                         self.pos -= 1; // go back one
-                        tokens.push(Token::new(TokenKind::Dot, start..self.pos, "."));
+                        tokens.push(Token::new(Tk::Dot, start..self.pos, "."));
                     }
                 } else {
-                    tokens.push(Token::new(TokenKind::Dot, start..self.pos, "."));
+                    tokens.push(Token::new(Tk::Dot, start..self.pos, "."));
                 }
 
                 // double wide arithmetic operators
                 '+' => if self.expect('+') {
-                    tokens.push(Token::new(TokenKind::PlusPlus, start..self.pos, "++"));
+                    tokens.push(Token::new(Tk::PlusPlus, start..self.pos, "++"));
                 } else if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::PlusEqual, start..self.pos, "+="));
+                    tokens.push(Token::new(Tk::PlusEqual, start..self.pos, "+="));
                 } else {
-                    tokens.push(Token::new(TokenKind::Plus, start..self.pos, "+"));
+                    tokens.push(Token::new(Tk::Plus, start..self.pos, "+"));
                 }
 
                 '-' => if self.expect('-') {
-                    tokens.push(Token::new(TokenKind::MinusMinus, start..self.pos, "--"));
+                    tokens.push(Token::new(Tk::MinusMinus, start..self.pos, "--"));
                 } else if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::MinusEqual, start..self.pos, "-="));
+                    tokens.push(Token::new(Tk::MinusEqual, start..self.pos, "-="));
                 } else if self.expect('>') {
-                    tokens.push(Token::new(TokenKind::RArrow, start..self.pos, "->"));
+                    tokens.push(Token::new(Tk::RArrow, start..self.pos, "->"));
                 } else {
-                    tokens.push(Token::new(TokenKind::Minus, start..self.pos, "-"));
+                    tokens.push(Token::new(Tk::Minus, start..self.pos, "-"));
                 }
 
                 // triple wide arithmetic operators
                 '*' => if self.expect('*') {
                     if self.expect('=') {
-                        tokens.push(Token::new(TokenKind::StarStarEqual, start..self.pos, "**="));
+                        tokens.push(Token::new(Tk::StarStarEqual, start..self.pos, "**="));
                     } else {
-                        tokens.push(Token::new(TokenKind::StarStar, start..self.pos, "**"));
+                        tokens.push(Token::new(Tk::StarStar, start..self.pos, "**"));
                     }
                 } else if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::StarEqual, start..self.pos, "*="));
+                    tokens.push(Token::new(Tk::StarEqual, start..self.pos, "*="));
                 } else {
-                    tokens.push(Token::new(TokenKind::Star, start..self.pos, "*"));
+                    tokens.push(Token::new(Tk::Star, start..self.pos, "*"));
                 }
 
                 '/' => if self.expect('/') {
                     if self.expect('=') {
-                        tokens.push(Token::new(TokenKind::SlashSlashEqual, start..self.pos, "//="));
+                        tokens.push(Token::new(Tk::SlashSlashEqual, start..self.pos, "//="));
                     } else {
-                        tokens.push(Token::new(TokenKind::SlashSlash, start..self.pos, "//"));
+                        tokens.push(Token::new(Tk::SlashSlash, start..self.pos, "//"));
                     }
                 } else if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::SlashEqual, start..self.pos, "/="));
+                    tokens.push(Token::new(Tk::SlashEqual, start..self.pos, "/="));
                 } else {
-                    tokens.push(Token::new(TokenKind::Slash, start..self.pos, "/"));
+                    tokens.push(Token::new(Tk::Slash, start..self.pos, "/"));
                 }
 
                 // comparison operators
                 '<' => if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::LessEqual, start..self.pos, "<="));
+                    tokens.push(Token::new(Tk::LessEqual, start..self.pos, "<="));
                 } else {
-                    tokens.push(Token::new(TokenKind::Less, start..self.pos, "<"));
+                    tokens.push(Token::new(Tk::Less, start..self.pos, "<"));
                 }
                 '>' => if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::MoreEqual, start..self.pos, ">="));
+                    tokens.push(Token::new(Tk::MoreEqual, start..self.pos, ">="));
                 } else {
-                    tokens.push(Token::new(TokenKind::More, start..self.pos, ">"));
+                    tokens.push(Token::new(Tk::More, start..self.pos, ">"));
                 }
                 '=' => if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::EqualEqual, start..self.pos, "=="));
+                    tokens.push(Token::new(Tk::EqualEqual, start..self.pos, "=="));
                 } else {
-                    tokens.push(Token::new(TokenKind::Equal, start..self.pos, "="));
+                    tokens.push(Token::new(Tk::Equal, start..self.pos, "="));
                 }
                 '!' => if self.expect('=') {
-                    tokens.push(Token::new(TokenKind::BangEqual, start..self.pos, "!="));
+                    tokens.push(Token::new(Tk::BangEqual, start..self.pos, "!="));
                 } else {
-                    tokens.push(Token::new(TokenKind::Bang, start..self.pos, "!"));
+                    tokens.push(Token::new(Tk::Bang, start..self.pos, "!"));
                 }
 
                 // logical operators
                 '|' => if self.expect('|') {
-                    tokens.push(Token::new(TokenKind::PipePipe, start..self.pos, "||"));
+                    tokens.push(Token::new(Tk::PipePipe, start..self.pos, "||"));
                 } else {
-                    tokens.push(Token::new(TokenKind::Pipe, start..self.pos, "|"));
+                    tokens.push(Token::new(Tk::Pipe, start..self.pos, "|"));
                 }
                 '&' => if self.expect('&') {
-                    tokens.push(Token::new(TokenKind::Amprsnd, start..self.pos, "&&"));
+                    tokens.push(Token::new(Tk::Amprsnd, start..self.pos, "&&"));
                 } else {
-                    tokens.push(Token::new(TokenKind::AmprsndAmprsnd, start..self.pos, "&"));
+                    tokens.push(Token::new(Tk::AmprsndAmprsnd, start..self.pos, "&"));
                 }
 
-                '%' => tokens.push(Token::new(TokenKind::Modulo, start..start, "%")),
-                ':' => tokens.push(Token::new(TokenKind::Colon, start..start, ":")),
-                ';' => tokens.push(Token::new(TokenKind::Semicolon, start..start, ";")),
-                ',' => tokens.push(Token::new(TokenKind::Comma, start..start, ",")),
-                '$' => tokens.push(Token::new(TokenKind::Sigil, start..start, "$")),
+                '%' => tokens.push(Token::new(Tk::Modulo, start..start, "%")),
+                ':' => tokens.push(Token::new(Tk::Colon, start..start, ":")),
+                ';' => tokens.push(Token::new(Tk::Semicolon, start..start, ";")),
+                ',' => tokens.push(Token::new(Tk::Comma, start..start, ",")),
+                '$' => tokens.push(Token::new(Tk::Sigil, start..start, "$")),
 
                 '"' => {
                     let mut lexeme = String::new();
@@ -318,7 +166,7 @@ impl<'a> Lexer<'a> {
                     }
 
                     tokens.push(Token {
-                        kind: TokenKind::String,
+                        kind: Tk::String,
                         span: start..self.pos,
                         lexeme,
                     });
@@ -336,13 +184,13 @@ impl<'a> Lexer<'a> {
                         lexeme.push(next_ch);
                     }
 
-                    let kind = TokenKind::from_lexeme(&lexeme);
+                    let kind = Tk::from_lexeme(&lexeme);
                     tokens.push(Token { kind, span: start..self.pos, lexeme });
                 }
 
                 '0'..='9' => {
                     let mut lexeme = String::from(ch);
-                    let mut kind = TokenKind::Integer;
+                    let mut kind = Tk::Integer;
 
                     // consume while valid number
                     while let Some(next_ch) = self.peek() {
@@ -352,7 +200,7 @@ impl<'a> Lexer<'a> {
 
                         // update token kind when first decimal encountered
                         if next_ch == '.' {
-                            if kind == TokenKind::Float {
+                            if kind == Tk::Float {
                                 break; // allow for decimals index into number literal
                             }
 
@@ -367,7 +215,7 @@ impl<'a> Lexer<'a> {
                                     break; // this is not a decimal part of the number, it's index into integer
                                 } else {
                                     lexeme.push('.');
-                                    kind = TokenKind::Float; // yeah ill have the regular please
+                                    kind = Tk::Float; // yeah ill have the regular please
                                     continue;
                                 }
                             } else {

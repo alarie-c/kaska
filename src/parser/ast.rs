@@ -1,7 +1,11 @@
+<<<<<<< HEAD:src/parser/ast.rs
+use crate::{ common::span::Span, lexer::token::Tk };
+=======
 use std::fmt::Display;
 
 use crate::common::span::Span;
 use super::lexer::TokenKind;
+>>>>>>> 4c623322508c31dca5132b211f5f2ff25808cd11:src/compiler/ast.rs
 
 // ----------------------------------------------------------------- \\
 // EXPRESSIONS
@@ -160,40 +164,40 @@ pub enum Operator {
 }
 
 impl Operator {
-    pub(in crate::compiler) fn binary(tk: &TokenKind) -> Option<Operator> {
+    pub fn binary(tk: &Tk) -> Option<Operator> {
         match tk {
-            TokenKind::Plus => Some(Operator::Add),
-            TokenKind::Minus => Some(Operator::Sub),
-            TokenKind::Star => Some(Operator::Mul),
-            TokenKind::Slash => Some(Operator::Div),
-            TokenKind::StarStar => Some(Operator::Exp),
-            TokenKind::SlashSlash => Some(Operator::Floor),
+            Tk::Plus => Some(Operator::Add),
+            Tk::Minus => Some(Operator::Sub),
+            Tk::Star => Some(Operator::Mul),
+            Tk::Slash => Some(Operator::Div),
+            Tk::StarStar => Some(Operator::Exp),
+            Tk::SlashSlash => Some(Operator::Floor),
 
             // logical operators
-            TokenKind::PipePipe => Some(Operator::LogOr),
-            TokenKind::AmprsndAmprsnd => Some(Operator::LogAnd),
+            Tk::PipePipe => Some(Operator::LogOr),
+            Tk::AmprsndAmprsnd => Some(Operator::LogAnd),
 
             // comparison operators
-            TokenKind::Less => Some(Operator::Lt),
-            TokenKind::LessEqual => Some(Operator::LtEq),
-            TokenKind::More => Some(Operator::Mt),
-            TokenKind::MoreEqual => Some(Operator::MtEq),
-            TokenKind::Bang => Some(Operator::Bang),
-            TokenKind::BangEqual => Some(Operator::BangEq),
-            TokenKind::EqualEqual => Some(Operator::EqEq),
+            Tk::Less => Some(Operator::Lt),
+            Tk::LessEqual => Some(Operator::LtEq),
+            Tk::More => Some(Operator::Mt),
+            Tk::MoreEqual => Some(Operator::MtEq),
+            Tk::Bang => Some(Operator::Bang),
+            Tk::BangEqual => Some(Operator::BangEq),
+            Tk::EqualEqual => Some(Operator::EqEq),
             _ => None,
         }
     }
 
-    pub(in crate::compiler) fn assignment(tk: &TokenKind) -> Option<Operator> {
+    pub fn assignment(tk: &Tk) -> Option<Operator> {
         match tk {
-            TokenKind::Equal => Some(Operator::Eq),
-            TokenKind::PlusEqual => Some(Operator::AddEq),
-            TokenKind::MinusEqual => Some(Operator::SubEq),
-            TokenKind::StarEqual => Some(Operator::MulEq),
-            TokenKind::SlashEqual => Some(Operator::DivEq),
-            TokenKind::StarStarEqual => Some(Operator::ExpEq),
-            TokenKind::SlashSlashEqual => Some(Operator::FloorEq),
+            Tk::Equal => Some(Operator::Eq),
+            Tk::PlusEqual => Some(Operator::AddEq),
+            Tk::MinusEqual => Some(Operator::SubEq),
+            Tk::StarEqual => Some(Operator::MulEq),
+            Tk::SlashEqual => Some(Operator::DivEq),
+            Tk::StarStarEqual => Some(Operator::ExpEq),
+            Tk::SlashSlashEqual => Some(Operator::FloorEq),
             _ => None,
         }
     }

@@ -1,9 +1,11 @@
 use std::fs;
-use common::errors::{ check_errs_for_abort, ErrorBuffer };
-use compiler::{ ast::Stmt, lexer::{ Lexer, Token }, parser::Parser };
+use common::errors::ErrorBuffer;
+use lexer::{ lexer::Lexer, token::Token };
+use parser::{ ast::Stmt, parser::Parser };
 
 mod common;
-mod compiler;
+mod lexer;
+mod parser;
 
 const PATH: &'static str = "main.kas";
 
@@ -32,12 +34,4 @@ fn main() {
     println!("Errors:");
     println!("{:#?}", lex_errs);
     println!("{:#?}", parse_errs);
-
-    // // determine testing error code from errors
-    // let code: i32 = match check_errs_for_abort(&lex_errs) || check_errs_for_abort(&parse_errs) {
-    //     true => -1,
-    //     false => 0,
-    // };
-
-    // std::process::exit(code);
 }
