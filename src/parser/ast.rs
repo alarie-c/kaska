@@ -1,11 +1,5 @@
-<<<<<<< HEAD:src/parser/ast.rs
 use crate::{ common::span::Span, lexer::token::Tk };
-=======
 use std::fmt::Display;
-
-use crate::common::span::Span;
-use super::lexer::TokenKind;
->>>>>>> 4c623322508c31dca5132b211f5f2ff25808cd11:src/compiler/ast.rs
 
 // ----------------------------------------------------------------- \\
 // EXPRESSIONS
@@ -63,7 +57,6 @@ pub enum ExprKind {
         rhs: Box<Expr>,
         op: Operator,
     },
-
 }
 
 #[macro_export]

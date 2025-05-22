@@ -1,5 +1,4 @@
 use crate::{ common::{ errors::{ Error, ErrorBuffer, ErrorKind } }, throw };
-
 use super::token::{ Tk, Token };
 
 pub struct Lexer<'a> {
