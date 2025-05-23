@@ -420,7 +420,7 @@ impl Parser {
 
         // end: END
         let span = start..self.current().span.end;
-        return Ok(stmt!(Function, name, ret, params, body, span));
+        return Ok(stmt!(Function, self.id(), name, ret, params, body, span));
     }
 
     fn stmt_variable(&mut self) -> Result<Stmt, Error> {
@@ -443,7 +443,7 @@ impl Parser {
         let value = self.expr()?;
 
         let span = start..value.span.end;
-        return Ok(stmt!(Variable, name, typ, value, span));
+        return Ok(stmt!(Variable, self.id(), name, typ, value, span));
     }
 
     fn stmt(&mut self) -> Result<Stmt, Error> {

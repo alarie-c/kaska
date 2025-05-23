@@ -6,6 +6,7 @@ use parser::{ ast::Stmt, parser::Parser };
 mod common;
 mod lexer;
 mod parser;
+mod semantics;
 
 const PATH: &'static str = "main.kas";
 

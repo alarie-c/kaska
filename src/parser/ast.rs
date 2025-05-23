@@ -84,11 +84,12 @@ macro_rules! expr {
 pub struct Stmt {
     pub kind: StmtKind,
     pub span: Span,
+    pub uid: usize,
 }
 
 impl Stmt {
-    pub fn new(kind: StmtKind, span: Span) -> Stmt {
-        Stmt { kind, span }
+    pub fn new(uid: usize, kind: StmtKind, span: Span) -> Stmt {
+        Stmt { uid, kind, span }
     }
 }
 
@@ -110,11 +111,11 @@ pub enum StmtKind {
 
 #[macro_export]
 macro_rules! stmt {
-    (Variable, $name:expr, $typ:expr, $value:expr, $span:expr) => {
-        Stmt::new(StmtKind::Variable { name: $name, typ: $typ, value: $value }, $span)
+    (Variable, $uid:expr, $name:expr, $typ:expr, $value:expr, $span:expr) => {
+        Stmt::new($uid, StmtKind::Variable { name: $name, typ: $typ, value: $value }, $span)
     };
-    (Function, $name:expr, $ret:expr, $params:expr, $body:expr, $span:expr) => {
-        Stmt::new(StmtKind::Function { name: $name, ret: $ret, params: $params, body: $body }, $span)
+    (Function, $uid:expr, $name:expr, $ret:expr, $params:expr, $body:expr, $span:expr) => {
+        Stmt::new($uid, StmtKind::Function { name: $name, ret: $ret, params: $params, body: $body }, $span)
     };
 }
 
