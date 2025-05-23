@@ -29,14 +29,14 @@ impl Token {
         }
     }
 
-    // /// Self explanatory, Rust won't let me just implement the trait
-    // pub fn copy(&self) -> Token {
-    //     Token {
-    //         kind: self.kind,
-    //         span: self.span.clone(),
-    //         lexeme: self.lexeme.to_owned(),
-    //     }
-    // }
+    /// Self explanatory, Rust won't let me just implement the trait
+    pub fn copy(&self) -> Token {
+        Token {
+            kind: self.kind,
+            span: self.span.clone(),
+            lexeme: self.lexeme.to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

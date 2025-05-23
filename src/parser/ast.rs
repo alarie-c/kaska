@@ -9,11 +9,12 @@ use std::fmt::Display;
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
+    pub uid: usize,
 }
 
 impl Expr {
-    pub fn new(kind: ExprKind, span: Span) -> Expr {
-        Expr { kind, span }
+    pub fn new(uid: usize, kind: ExprKind, span: Span) -> Expr {
+        Expr { uid, kind, span }
     }
 }
 
@@ -61,17 +62,17 @@ pub enum ExprKind {
 
 #[macro_export]
 macro_rules! expr {
-    (Call, $callee:expr, $args:expr, $span:expr) => {
-        Expr::new(ExprKind::Call { callee: Box::new($callee), args: $args }, $span)
+    (Call, $uid:expr, $callee:expr, $args:expr, $span:expr) => {
+        Expr::new($uid, ExprKind::Call { callee: Box::new($callee), args: $args }, $span)
     };
-    (Binary, $lhs:expr, $rhs:expr, $op:expr, $span:expr) => {
-        Expr::new(ExprKind::Binary { lhs: Box::new($lhs), rhs: Box::new($rhs), op: $op }, $span)
+    (Binary, $uid:expr, $lhs:expr, $rhs:expr, $op:expr, $span:expr) => {
+        Expr::new($uid, ExprKind::Binary { lhs: Box::new($lhs), rhs: Box::new($rhs), op: $op }, $span)
     };
-    (Assignment, $assignee:expr, $value:expr, $op:expr, $span:expr) => {
-        Expr::new(ExprKind::Assignment { assignee: Box::new($assignee), value: Box::new($value), op: $op }, $span)
+    (Assignment, $uid:expr, $assignee:expr, $value:expr, $op:expr, $span:expr) => {
+        Expr::new($uid, ExprKind::Assignment { assignee: Box::new($assignee), value: Box::new($value), op: $op }, $span)
     };
-    (Parameter, $name:expr, $ty:expr, $span:expr) => {
-        Expr::new(ExprKind::Parameter { name: $name, ty: Box::new($ty) }, $span)
+    (Parameter, $uid:expr, $name:expr, $ty:expr, $span:expr) => {
+        Expr::new($uid, ExprKind::Parameter { name: $name, ty: Box::new($ty) }, $span)
     };
 }
 

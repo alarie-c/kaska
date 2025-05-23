@@ -1,10 +1,4 @@
-....
-..
-.
-
-import
-from
-as
-inline
-pub
-in
+function main()
+    let x = 20 + 10
+    let y = add(x, 8)
+end

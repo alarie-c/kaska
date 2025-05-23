@@ -8,40 +8,6 @@ use crate::{
 use super::{ ast::{ Expr, ExprKind, Operator, Stmt, StmtKind } };
 
 // ----------------------------------------------------------------- \\
-// HELPER PARSERS
-// ----------------------------------------------------------------- \\
-
-fn parse_integer(tk: &Token) -> Result<Expr, Error> {
-    let value = match tk.lexeme.parse::<i32>() {
-        Ok(value) => value,
-        Err(_) => {
-            return Err(throw!(ParseError, tk.span.clone(), "error parsing integer literal"));
-        }
-    };
-    return Ok(Expr::new(ExprKind::Integer { value }, tk.span.clone()));
-}
-
-fn parse_float(tk: &Token) -> Result<Expr, Error> {
-    let value = match tk.lexeme.parse::<f32>() {
-        Ok(value) => value,
-        Err(_) => {
-            return Err(throw!(ParseError, tk.span.clone(), "error parsing float literal"));
-        }
-    };
-    return Ok(Expr::new(ExprKind::Float { value }, tk.span.clone()));
-}
-
-fn parse_ident(tk: &Token) -> Result<Expr, Error> {
-    let name = tk.lexeme.clone();
-    return Ok(Expr::new(ExprKind::Ident { name }, tk.span.clone()));
-}
-
-fn parse_string(tk: &Token) -> Result<Expr, Error> {
-    let value = tk.lexeme.clone();
-    return Ok(Expr::new(ExprKind::String { value }, tk.span.clone()));
-}
-
-// ----------------------------------------------------------------- \\
 // PARSER IMPLEMENTATION
 // ----------------------------------------------------------------- \\
 
@@ -49,6 +15,7 @@ pub struct Parser {
     pub errors: Vec<Error>,
     tokens: Vec<Token>,
     pos: usize,
+    uid: usize,
 }
 
 impl Parser {
@@ -57,6 +24,7 @@ impl Parser {
             errors: vec![],
             tokens,
             pos: 0,
+            uid: 0,
         };
     }
 
@@ -75,6 +43,13 @@ impl Parser {
     /// Returns whatever is at the current position of the parser.
     fn current(&self) -> &Token {
         return self.tokens.get(self.pos).unwrap_or(&self.tokens[self.tokens.len() - 1]);
+    }
+
+    /// Returns whatever is at the current position of the parser and clones it.
+    fn current_owned(&self) -> Token {
+        return self.tokens
+            .get(self.pos)
+            .map_or(self.tokens[self.tokens.len() - 1].copy(), |t| t.copy());
     }
 
     /// Returns the next thing past the current position of the parser without changing the state of the parser.
@@ -187,6 +162,13 @@ impl Parser {
     fn err(&mut self, error: Error) {
         self.errors.push(error);
     }
+
+    /// Provides a unique ID for the next node
+    /// and advances the internal UID counter.
+    fn id(&mut self) -> usize {
+        self.uid += 1;
+        return self.uid - 1;
+    }
 }
 
 // ----------------------------------------------------------------- \\
@@ -194,6 +176,40 @@ impl Parser {
 // ----------------------------------------------------------------- \\
 
 impl Parser {
+    fn parse_integer(&mut self) -> Result<Expr, Error> {
+        let tk = self.current_owned();
+        let value = match tk.lexeme.parse::<i32>() {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(throw!(ParseError, tk.span, "error parsing integer literal"));
+            }
+        };
+        return Ok(Expr::new(self.id(), ExprKind::Integer { value }, tk.span));
+    }
+
+    fn parse_float(&mut self) -> Result<Expr, Error> {
+        let tk = self.current_owned();
+        let value = match tk.lexeme.parse::<f32>() {
+            Ok(value) => value,
+            Err(_) => {
+                return Err(throw!(ParseError, tk.span.clone(), "error parsing float literal"));
+            }
+        };
+        return Ok(Expr::new(self.id(), ExprKind::Float { value }, tk.span));
+    }
+
+    fn parse_ident(&mut self) -> Result<Expr, Error> {
+        let tk = self.current_owned();
+        let name = tk.lexeme;
+        return Ok(Expr::new(self.id(), ExprKind::Ident { name }, tk.span));
+    }
+
+    fn parse_string(&mut self) -> Result<Expr, Error> {
+        let tk = self.current_owned();
+        let value = tk.lexeme;
+        return Ok(Expr::new(self.id(), ExprKind::String { value }, tk.span));
+    }
+
     fn parse_args(&mut self) -> Result<Vec<Expr>, Error> {
         let mut args = Vec::<Expr>::new();
         self.consume();
@@ -245,7 +261,7 @@ impl Parser {
 
             let typ = self.expr()?;
             let span = start..typ.span.end;
-            params.push(expr!(Parameter, name, typ, span));
+            params.push(expr!(Parameter, self.id(), name, typ, span));
 
             // next is either COMMA or RPAREN
             if self.expect_next_ignore_newln(Tk::Comma) {
@@ -299,23 +315,26 @@ impl Parser {
 
 impl Parser {
     fn expr_literal(&mut self) -> Result<Expr, Error> {
-        let tk = self.current();
-        let span = tk.span.clone();
-
-        match &tk.kind {
-            Tk::Integer => parse_integer(tk),
-            Tk::Float => parse_float(tk),
-            Tk::Ident => parse_ident(tk),
-            Tk::String => parse_string(tk),
+        match &self.current().kind {
+            Tk::Integer => self.parse_integer(),
+            Tk::Float => self.parse_float(),
+            Tk::Ident => self.parse_ident(),
+            Tk::String => self.parse_string(),
 
             Tk::True | Tk::False => {
+                let tk = self.current_owned();
                 let value = tk.kind == Tk::True;
-                return Ok(Expr::new(ExprKind::Boolean { value }, span));
+                return Ok(Expr::new(self.id(), ExprKind::Boolean { value }, tk.span));
             }
 
             _ => {
+                let tk = self.current_owned();
                 return Err(
-                    throw!(SyntaxError, span, format!("expected expression, got '{}'", tk.lexeme))
+                    throw!(
+                        SyntaxError,
+                        tk.span.clone(),
+                        format!("expected expression, got '{}'", tk.lexeme)
+                    )
                 );
             }
         }
@@ -328,7 +347,7 @@ impl Parser {
             self.skip_newlines();
             let args = self.parse_args()?;
             let span = expr.span.start..self.current().span.end;
-            expr = expr!(Call, expr, args, span);
+            expr = expr!(Call, self.id(), expr, args, span);
         }
 
         return Ok(expr);
@@ -343,7 +362,7 @@ impl Parser {
             self.skip_newlines();
             let rhs = self.expr()?;
             let span = expr.span.start..rhs.span.end;
-            expr = expr!(Binary, expr, rhs, op, span);
+            expr = expr!(Binary, self.id(), expr, rhs, op, span);
         }
 
         return Ok(expr);
@@ -358,7 +377,7 @@ impl Parser {
             self.skip_newlines();
             let value = self.expr()?;
             let span = expr.span.start..value.span.end;
-            expr = expr!(Binary, expr, value, op, span);
+            expr = expr!(Binary, self.id(), expr, value, op, span);
         }
 
         return Ok(expr);
@@ -396,7 +415,6 @@ impl Parser {
         };
 
         self.consume();
-
         self.skip_newlines();
         let body = self.parse_block();
 
