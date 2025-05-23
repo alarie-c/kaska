@@ -1,4 +1,4 @@
-use crate::common::types::{ Context, Type };
+use crate::common::types::{ Context, Symbol, Type, Typing };
 
 /// Returns the global scope with all relevant symbols loaded
 fn global() -> Context {
@@ -15,15 +15,22 @@ impl SymbolTable {
         return SymbolTable { context_map: vec![global()] };
     }
 
-    pub fn here(&mut self) -> &mut Context {
+    pub fn sym(typ: Type, nullible: bool) -> Symbol {
+        return Symbol {
+            typ,
+            nullible,
+        };
+    }
+
+    pub fn local(&mut self) -> &mut Context {
         assert_ne!(self.context_map.len(), 0, "global scope is missing?");
         return self.context_map.last_mut().unwrap();
     }
 
     /// Stores a symbol in this scope specifically
-    pub fn store_here(&mut self, id: &String, typ: Type) {
-        let here = self.here();
-        here.store(id, typ);
+    pub fn store_local(&mut self, id: &String, sym: Symbol) {
+        let local = self.local();
+        local.store(id, sym);
     }
 
     /// Steps out level into lexical scope (removes the last context)
@@ -35,5 +42,14 @@ impl SymbolTable {
     /// Steps one level into lexical scope
     pub fn step_into(&mut self) {
         self.context_map.push(Context::empty());
+    }
+
+    pub fn lookup(&self, id: &String) -> Option<&Symbol> {
+        for ctx in self.context_map.iter().rev() {
+            if let Some(sym) = ctx.lookup(id) {
+                return Some(sym)
+            }   
+        }
+        return None;
     }
 }

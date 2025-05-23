@@ -67,6 +67,7 @@ pub enum ErrorKind {
 
     // Warnings
     UnusedVariable,
+    RedundantCode,
 }
 
 impl Display for ErrorKind {
@@ -79,6 +80,7 @@ impl Display for ErrorKind {
             Self::AssignToConstant => write!(f, "tried to assign to a constant"),
             Self::UnknownIdentifier => write!(f, "unknown identifier"),
             Self::UnusedVariable => write!(f, "unused variable"),
+            Self::RedundantCode => write!(f, "redundant code"),
         }
     }
 }

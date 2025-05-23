@@ -1,4 +1,4 @@
-function main()
-    let x = 20 + 10
-    let y = add(x, 8)
+function main() -> None
+    let x = 20
+    let y = 5.5
 end

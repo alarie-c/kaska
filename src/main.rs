@@ -2,6 +2,7 @@ use std::fs;
 use common::errors::ErrorBuffer;
 use lexer::{ lexer::Lexer, token::Token };
 use parser::{ ast::Stmt, parser::Parser };
+use semantics::type_checker::TypeChecker;
 
 mod common;
 mod lexer;
@@ -20,6 +21,14 @@ pub fn parse(source: Vec<Token>) -> (Vec<Stmt>, ErrorBuffer) {
     return parser.parse();
 }
 
+pub fn semantics(ast: &Vec<Stmt>) {
+    let mut type_checker = TypeChecker::new(ast);
+    type_checker.resolve();
+
+    println!("Semantics:\n{:#?}", type_checker.metadata);
+    println!("Errors:\n{:#?}", type_checker.ebuffer);
+}
+
 fn main() {
     let source_code = fs::read_to_string(&PATH).expect("There was an error reading the file!");
 
@@ -30,6 +39,9 @@ fn main() {
     // parse and debug
     let (ast, parse_errs) = parse(tokens);
     println!("AST:\n{:#?}", ast);
+
+    // semantic analysis
+    semantics(&ast);
 
     // print errors
     println!("Errors:");
