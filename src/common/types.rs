@@ -1,6 +1,8 @@
 use std::{ collections::HashMap, fmt::Display };
 use crate::parser::ast::Expr;
 
+use super::errors::Error;
+
 /// Represents the any type of an expression in the program.
 ///
 /// Will eventually be extended to include intersection and union types.
@@ -50,6 +52,11 @@ pub enum Typing<'a> {
         typ: Type,
         nullible: bool,
         lvalue: bool,
+    },
+
+    Cast {
+        from: Type,
+        to: Type,
     },
 
     /// Typing metadata for function parameters

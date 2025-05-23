@@ -38,6 +38,37 @@ impl<'a> TypeChecker<'a> {
 }
 
 impl<'a> TypeChecker<'a> {
+    pub fn compatible_add(
+        &mut self,
+        a: &Typing<'a>,
+        b: &Typing<'a>,
+        a_id: usize,
+        // b_id: usize,
+        expr: &Expr
+    ) -> Result<Type, Error> {
+        match (a, b) {
+            (
+                Typing::Expr { typ: a_typ, nullible: _, lvalue: _ },
+                Typing::Expr { typ: b_typ, nullible: _, lvalue: _ },
+            ) => {
+                if a_typ == &Type::Int && b_typ == &Type::Float {
+                    // need a cast for A
+                    let cast_md = Typing::Cast { from: *a_typ, to: Type::Float };
+                    self.metadata(a_id, cast_md);
+                    
+                    let expr_md = Typing::Expr { typ: Type::Float, nullible: false, lvalue: false };
+                    self.metadata(expr.uid, expr_md);
+                    return Ok(Type::Float)
+                } else {
+                    panic!()
+                }
+            }
+            _ => panic!()
+        }
+    }
+}
+
+impl<'a> TypeChecker<'a> {
     fn expr(&mut self, expr: &Expr) -> Result<Type, Error> {
         match &expr.kind {
             ExprKind::Integer { value: _ } => {

@@ -2,7 +2,7 @@
 # Parametric Types in Functions
 # ------------------------------------------------ #
 
-function scale(x: T) where {T is Integer} -> bool
+function scale(x: T) where (T: Integer) -> bool
     return x % 2 == 0
 end
 
@@ -10,7 +10,7 @@ end
 # Parametric Types in Classes + Builtins
 # ------------------------------------------------ #
 
-class Point{T} where {T is Integer}
+class Point<T> where T: Integer
     x: T
     y: T
 
@@ -97,10 +97,30 @@ from Module import * end
 # Compiler Directions
 # ------------------------------------------------ #
 
-inline function add_five(a: T) where {T is Number} -> T
+inline function add_five(a: T) where (T: Number) -> T
     return a + 5
 end
 
-static function add_five(a: T) where {T is Number} -> T
+static function add_five(a: T) where (T: Number) -> T
     return a + 5
 end
+
+# ------------------------------------------------ #
+# Arrays, Matricies, Sequences, etc.
+# ------------------------------------------------ #
+
+let array = [2; 3]
+let array = [2, 2, 2]
+let array: [int; 3] = default # this would initialize it to zero
+
+# Chao uses 'sequences' for dynamic arrays. These are dynamically
+# resizable and homogenous
+let sequence = ArrayList(1, 2, 4, 5, 6);
+let s = sequence.sort().rev()
+
+# N dimensional arrays can be created like so
+let ndarr = [[3; 5]; 10]
+
+# To make dynamically resizeable N dimensional arrays, you can use the
+# NdArray in the standard library, which is basically a non-hemogenous sequence of sequences
+let resNdArray = NdArray()

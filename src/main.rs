@@ -8,6 +8,7 @@ mod common;
 mod lexer;
 mod parser;
 mod semantics;
+mod tests;
 
 const PATH: &'static str = "main.kas";
 
