@@ -1,5 +1,5 @@
 use crate::{
-    common::errors::{ Error, ErrorBuffer, ErrorKind },
+    common::errors::{ Error, ErrorBuffer, ErrorKind, ErrorWriter },
     expr,
     lexer::token::{ Tk, Token },
     stmt,
@@ -12,28 +12,49 @@ use super::{ ast::{ Expr, ExprKind, Operator, Stmt, StmtKind } };
 // ----------------------------------------------------------------- \\
 
 pub struct Parser {
-    pub errors: Vec<Error>,
+    /// The token input stream of the parser, flat and should never be mutated.
     tokens: Vec<Token>,
+    
+    /// The error buffer to hold all errors encountered by the parser.
+    errors: ErrorBuffer,
+    
+    /// The position of the parser in the token stream.
     pos: usize,
+    
+    /// The UID of the next node in the syntax tree.
     uid: usize,
+}
+
+// Error writer implementation to support recording errors in the centralized error buffer
+impl ErrorWriter for Parser {
+    fn error(&mut self, error: Error) {
+        self.errors.push(error);
+    }
+
+    fn dump_errors(&mut self) -> ErrorBuffer {
+        return self.errors.drain(0..).collect();
+    }
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
         return Parser {
-            errors: vec![],
             tokens,
+            errors: vec![],
             pos: 0,
             uid: 0,
         };
     }
 
     pub fn parse(&mut self) -> (Vec<Stmt>, ErrorBuffer) {
-        let ast: Vec<Stmt> = self.parse_program();
-        let ebuffer = self.errors.drain(0..).collect();
-        return (ast, ebuffer);
+        let (ast, errors) = self.parse_program();
+        return (ast, errors);
     }
 }
+
+// ----------------------------------------------------------------- \\
+// HELPER METHODS
+// ----------------------------------------------------------------- \\
 
 impl Parser {
     fn at_end(&self) -> bool {
@@ -157,10 +178,6 @@ impl Parser {
         println!("\nLOCATED: {}", location);
         println!("CURRENT: {:?}", self.current().kind);
         println!("NEXT: {:?}", self.peek().kind);
-    }
-
-    fn err(&mut self, error: Error) {
-        self.errors.push(error);
     }
 
     /// Provides a unique ID for the next node
@@ -292,7 +309,7 @@ impl Parser {
             match self.stmt() {
                 Ok(stmt) => stmts.push(stmt),
                 Err(err) => {
-                    self.err(err);
+                    self.error(err);
                     self.sync();
                 }
             }
@@ -302,7 +319,7 @@ impl Parser {
 
         // this only happens if there's no END to close
         // throw error and return so semantic analysis can happen on this block
-        self.err(
+        self.error(
             throw!(SyntaxError, self.current().span.clone(), "block is missing 'end' delimiter")
         );
         return stmts;
@@ -480,7 +497,7 @@ impl Parser {
 // ----------------------------------------------------------------- \\
 
 impl Parser {
-    fn parse_program(&mut self) -> Vec<Stmt> {
+    fn parse_program(&mut self) -> (Vec<Stmt>, ErrorBuffer) {
         let mut stmts: Vec<Stmt> = vec![];
 
         while !self.at_end() {
@@ -489,7 +506,7 @@ impl Parser {
                     match self.stmt_function() {
                         Ok(stmt) => stmts.push(stmt),
                         Err(err) => {
-                            self.err(err);
+                            self.error(err);
                             self.sync_after_fn();
                         }
                     }
@@ -503,6 +520,6 @@ impl Parser {
             self.skip_newlines();
         }
 
-        return stmts;
+        return (stmts, self.dump_errors());
     }
 }

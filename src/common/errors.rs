@@ -1,7 +1,9 @@
 use std::fmt::Display;
 use super::span::{ formatted_content, line_number, Span };
 
-pub type ErrorBuffer = Vec<Error>;
+// ----------------------------------------------------------------- \\
+// MACROS
+// ----------------------------------------------------------------- \\
 
 #[macro_export]
 macro_rules! throw {
@@ -13,11 +15,20 @@ macro_rules! throw {
     };
 }
 
-/// Takes an error buffer and returns true of one or more of the errors
-/// will abort compilation
-pub fn check_errs_for_abort(buffer: &ErrorBuffer) -> bool {
-    return buffer.iter().any(|err| err.abort == true);
+// ----------------------------------------------------------------- \\
+// ERROR WRITER
+// ----------------------------------------------------------------- \\
+
+pub type ErrorBuffer = Vec<Error>;
+
+pub trait ErrorWriter {
+    fn error(&mut self, error: Error);
+    fn dump_errors(&mut self) -> ErrorBuffer;
 }
+
+// ----------------------------------------------------------------- \\
+// ERROR STRUCT
+// ----------------------------------------------------------------- \\
 
 #[derive(Debug)]
 pub struct Error {
@@ -47,13 +58,11 @@ impl Error {
             abort,
         }
     }
-
-    // pub fn print(&self, source: &String) {
-    //     let ln = line_number(&self.span, source);
-    //     let f = formatted_content(&self.span, &self.span, source);
-    //     println!("{:?}", f);
-    // }
 }
+
+// ----------------------------------------------------------------- \\
+// ERROR KINDS
+// ----------------------------------------------------------------- \\
 
 #[derive(Debug)]
 pub enum ErrorKind {

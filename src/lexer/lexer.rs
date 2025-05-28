@@ -1,16 +1,32 @@
-use crate::{ common::{ errors::{ Error, ErrorBuffer, ErrorKind } }, throw };
+use crate::{ common::errors::{ Error, ErrorBuffer, ErrorKind, ErrorWriter }, throw };
 use super::token::{ Tk, Token };
 
 pub struct Lexer<'a> {
     source: &'a String,
+    errors: ErrorBuffer,
     pos: usize,
 }
+
+impl<'a> ErrorWriter for Lexer<'a> {
+    fn error(&mut self, error: Error) {
+        self.errors.push(error);
+    }
+
+    fn dump_errors(&mut self) -> ErrorBuffer {
+        return self.errors.drain(0..).collect();
+    }
+}
+
+// ----------------------------------------------------------------- \\
+// TOKENIZER IMPLEMENTATION
+// ----------------------------------------------------------------- \\
 
 impl<'a> Lexer<'a> {
     /// Initializes a new lexer with the given source
     pub fn new(source: &'a String) -> Lexer<'a> {
         Lexer {
             source,
+            errors: vec![],
             pos: 0,
         }
     }
@@ -19,7 +35,6 @@ impl<'a> Lexer<'a> {
     /// and eventually returning them as a vector
     pub fn lex(&mut self) -> (Vec<Token>, ErrorBuffer) {
         let mut tokens = Vec::<Token>::new();
-        let mut errors: ErrorBuffer = vec![];
 
         while let Some(ch) = self.current() {
             let start = self.pos;
@@ -152,7 +167,7 @@ impl<'a> Lexer<'a> {
 
                             // uh oh cherio
                             None => {
-                                errors.push(
+                                self.error(
                                     throw!(
                                         SyntaxError,
                                         start..self.pos,
@@ -237,7 +252,7 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 _ =>
-                    errors.push(
+                    self.error(
                         throw!(IllegalCharacter, start..self.pos, "this character is not allowed")
                     ),
             }
@@ -246,7 +261,7 @@ impl<'a> Lexer<'a> {
 
         // sneak a little EOF to cap off the token stream
         tokens.push(Token::eof(self.pos..self.pos));
-        return (tokens, errors);
+        return (tokens, self.dump_errors());
     }
 }
 

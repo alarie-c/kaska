@@ -123,7 +123,7 @@ macro_rules! stmt {
 // OPERATORS
 // ----------------------------------------------------------------- \\
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Operator {
     // arithmetic operators
     Add,
